@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:dcterms="http://purl.org/dc/terms/"
+         xmlns:bib="http://purl.org/net/biblio#"
+         xmlns:z="http://www.zotero.org/namespaces/export#"
+         xmlns:link="http://purl.org/rss/1.0/modules/link/">
+
+  <bib:Entry rdf:about="urn:item:1">
+    <dc:title>A Benchmark Study of Numeric Methods for Quantum Scattering</dc:title>
+    <dc:creator>
+      <bib:authors>
+        <rdf:Seq>
+          <rdf:li>Smith, Alice</rdf:li>
+          <rdf:li>Jones, Bob</rdf:li>
+        </rdf:Seq>
+      </bib:authors>
+    </dc:creator>
+    <dc:date>2023-06-15</dc:date>
+    <dcterms:abstract>A comprehensive benchmark of numeric integration methods applied to coupled-channel equations.</dcterms:abstract>
+    <dc:description>10.1234/jcp.2023.112345</dc:description>
+    <dc:description>arXiv:2301.12345</dc:description>
+    <z:citationKey>smith2023benchmark</z:citationKey>
+  </bib:Entry>
+
+  <bib:Entry rdf:about="urn:item:2">
+    <dc:title>Improved Coupled-Channel Analysis of Breakup Reactions</dc:title>
+    <dc:creator>
+      <bib:authors>
+        <rdf:Seq>
+          <rdf:li>Chen, Wei</rdf:li>
+          <rdf:li>Tanaka, Hiroshi</rdf:li>
+        </rdf:Seq>
+      </bib:authors>
+    </dc:creator>
+    <dc:date>2024-03-22</dc:date>
+    <dcterms:abstract>We present an improved analysis of breakup data using continuum-discretized coupled-channels.</dcterms:abstract>
+    <dc:identifier>10.5678/prc.2024.024612</dc:identifier>
+    <z:citationKey>chen2024improved</z:citationKey>
+  </bib:Entry>
+
+  <z:Attachment rdf:about="urn:attachment:1">
+    <dc:title>paper.pdf</dc:title>
+    <dc:type>application/pdf</dc:type>
+    <z:path>files/1/paper.pdf</z:path>
+    <link:link rdf:resource="urn:item:1"/>
+  </z:Attachment>
+
+  <z:Attachment rdf:about="urn:attachment:2">
+    <dc:title>snapshot.html</dc:title>
+    <dc:type>text/html</dc:type>
+    <z:path>files/2/snapshot.html</z:path>
+    <link:link rdf:resource="urn:item:2"/>
+  </z:Attachment>
+
+</rdf:RDF>
