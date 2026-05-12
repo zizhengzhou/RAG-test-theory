@@ -1,4 +1,4 @@
-"""Rebuild auto-generated index blocks on dimension pages."""
+"""Rebuild auto-generated index blocks on edge-category pages."""
 
 from __future__ import annotations
 
@@ -15,7 +15,8 @@ AUTO_BEGIN = "<!-- AUTO:BEGIN -->"
 AUTO_END = "<!-- AUTO:END -->"
 
 
-def load_dimension_axes(rag_dir: Path) -> set[str]:
+def load_vocabulary_categories(rag_dir: Path) -> set[str]:
+    """Return the set of edge categories defined in vocabulary.md."""
     vocab_file = rag_dir / "vocabulary.md"
     if not vocab_file.exists():
         return set()
@@ -27,51 +28,58 @@ def load_dimension_axes(rag_dir: Path) -> set[str]:
         data = yaml.safe_load(match.group(1))
     except Exception:
         return set()
-    vocab = data.get("vocabulary", data) if isinstance(data, dict) else {}
-    if not isinstance(vocab, dict):
-        return set()
-    return {axis for axis, entries in vocab.items() if isinstance(entries, dict)}
+    if isinstance(data, dict):
+        terms = data.get("terms", [])
+        if isinstance(terms, list):
+            return {t["category"] for t in terms if isinstance(t, dict) and "category" in t}
+    return set()
 
 
-def collect_dimension_tags(rag_dir: Path) -> dict[str, dict[str, list[str]]]:
+def collect_edge_tags(rag_dir: Path) -> dict[str, dict[str, list[str]]]:
+    """Collect canonical_id values from source page ``edges`` frontmatter, grouped by category."""
     tag_map: dict[str, dict[str, list[str]]] = {}
-    allowed_axes = load_dimension_axes(rag_dir)
-    if not allowed_axes:
-        return tag_map
     sources_dir = rag_dir / "summary" / "sources"
     if not sources_dir.is_dir():
         return tag_map
     for page_path in sources_dir.glob("*.md"):
         fm, _ = read_frontmatter(page_path)
-        for axis in allowed_axes:
-            value = fm.get(axis, [])
-            if not isinstance(value, list):
+        edges = fm.get("edges")
+        if not isinstance(edges, dict):
+            continue
+        for category, entries in edges.items():
+            if not isinstance(entries, list):
                 continue
-            for tag in value:
-                tag = tag.strip().strip('"')
-                if not tag:
+            for entry in entries:
+                if isinstance(entry, dict):
+                    cid = entry.get("canonical_id", "")
+                elif isinstance(entry, str):
+                    cid = entry
+                else:
                     continue
-                tag_map.setdefault(axis, {})
-                tag_map[axis].setdefault(tag, [])
-                tag_map[axis][tag].append(page_path.stem)
+                cid = str(cid).strip()
+                if not cid:
+                    continue
+                tag_map.setdefault(category, {})
+                tag_map[category].setdefault(cid, [])
+                tag_map[category][cid].append(page_path.stem)
     return tag_map
 
 
-def ensure_dimension_page(rag_dir: Path, axis: str, tag: str) -> Path:
-    dim_dir = rag_dir / "summary" / axis
-    dim_dir.mkdir(parents=True, exist_ok=True)
-    page = dim_dir / f"{tag}.md"
+def ensure_category_page(rag_dir: Path, category: str, tag: str) -> Path:
+    cat_dir = rag_dir / "summary" / category
+    cat_dir.mkdir(parents=True, exist_ok=True)
+    page = cat_dir / f"{tag.replace(':', '_').replace('/', '_')}.md"
     if not page.exists():
         today = date.today().isoformat()
         page.write_text(
-            f"---\ntype: {axis[:-1]}\nslug: {tag}\ncreated: {today}\nlast_updated: {today}\nlast_indexed: {today}\n---\n\n"
-            f"# {tag}\n\n_Manual prose here._\n\n{AUTO_BEGIN}\n## Papers using this tag (0)\n\n{AUTO_END}\n",
+            f"---\ntype: edge-index\ncategory: {category}\ncanonical_id: {tag}\ncreated: {today}\nlast_indexed: {today}\n---\n\n"
+            f"# {tag}\n\n_Manual prose here._\n\n{AUTO_BEGIN}\n## Source pages (0)\n\n{AUTO_END}\n",
             encoding="utf-8",
         )
     return page
 
 
-def rebuild_auto_block(page_path: Path, axis: str, tag: str, source_keys: list[str]) -> bool:
+def rebuild_auto_block(page_path: Path, category: str, tag: str, source_keys: list[str]) -> bool:
     text = page_path.read_text(encoding="utf-8")
     begin_idx = text.find(AUTO_BEGIN)
     end_idx = text.find(AUTO_END)
@@ -81,9 +89,9 @@ def rebuild_auto_block(page_path: Path, axis: str, tag: str, source_keys: list[s
     after = text[end_idx:]
 
     lines = [
-        f"\n## Papers using this tag ({len(source_keys)})",
+        f"\n## Source pages ({len(source_keys)})",
     ]
-    for key in source_keys:
+    for key in sorted(source_keys):
         lines.append(f"- [[../sources/{key}]]")
     lines.append("")
     new_block = "\n".join(lines)
@@ -93,21 +101,25 @@ def rebuild_auto_block(page_path: Path, axis: str, tag: str, source_keys: list[s
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Update AUTO index blocks on dimension pages")
+    parser = argparse.ArgumentParser(description="Update AUTO index blocks on edge-category pages")
     parser.add_argument("--rag-dir", default="RAG")
     args = parser.parse_args()
 
     rag_dir = Path(args.rag_dir).resolve()
-    tag_map = collect_dimension_tags(rag_dir)
+    tag_map = collect_edge_tags(rag_dir)
+    if not tag_map:
+        print("update-index: no edge tags found in source pages")
+        return 0
+
     updated = 0
-    for axis, tags in tag_map.items():
+    for category, tags in tag_map.items():
         for tag, source_keys in tags.items():
-            page = ensure_dimension_page(rag_dir, axis, tag)
-            if rebuild_auto_block(page, axis, tag, source_keys):
+            page = ensure_category_page(rag_dir, category, tag)
+            if rebuild_auto_block(page, category, tag, source_keys):
                 updated += 1
 
     append_log(rag_dir, "update-index", "", f"updated={updated} pages")
-    print(f"update-index: updated {updated} dimension pages")
+    print(f"update-index: updated {updated} edge-category pages")
     return 0
 
 

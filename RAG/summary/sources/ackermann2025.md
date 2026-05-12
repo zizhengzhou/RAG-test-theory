@@ -1,49 +1,97 @@
 ---
-type: source
-created: 2026-05-12
-last_updated: 2026-05-12
-title: Direct observation of coherent elastic antineutrino–nucleus scattering
-authors: [Ackermann, N.]
-year: 2025
-doi: 10.1038/s41586-025-09322-2
-arxiv: 2501.05206
-pdf: ../../reference/pdfs/ackermann2025.pdf
-experiment-groups: [uncategorized]
-detector-materials: [uncategorized]
-primary-goals: [uncategorized]
-background-sources: [uncategorized]
-project-relevance: [uncategorized]
+schema_version: darw-source-v1
+doc_id: arxiv:2501.05206
+citation_key: ackermann2025
+identifiers:
+  arxiv: '2501.05206'
+  doi: 10.1038/s41586-025-09322-2
+  inspire: null
+  zotero_key: null
+  url: null
+source:
+  title: Direct observation of coherent elastic antineutrino–nucleus scattering
+  authors:
+  - Ackermann, N.
+  year: '2025'
+  venue: null
+  abstract: ''
+  source_type: arxiv_source
+  primary_evidence: reference/parsed/arxiv_2501.05206.md
+  original_pdf: reference/pdfs/ackermann2025.pdf
+  original_tex: null
+  source_sha256: c0777923089f296c956085b88d0625c3f5a0c0b4980a1816d50d75901b788ebf
+  parser: arxiv2md
+  parser_version: 0.1.1
+  parsed_at: '2026-05-12'
+edges:
+  research_areas: []
+  physical_systems: []
+  techniques: []
+  properties: []
+  models: []
+  observables: []
+  datasets: []
+  experiments: []
+chunk_manifest: reference/chunks/arxiv_2501.05206.jsonl
+quality:
+  extraction_confidence: low
+  needs_human_review: false
+  math_extraction_quality: unknown
+  metadata_conflicts: []
+status:
+  reading_status: unread
+  relevance: unknown
+  last_checked: ''
 ---
 
 # Direct observation of coherent elastic antineutrino–nucleus scattering
-## Summary
 
-Direct observation of coherent elastic antineutrino–nucleus scattering (2025) by Ackermann, N.. Extracted abstract: Neutrinos are known for their tiny interaction rate with matter. This is the partially coherent regime, and uncertainties related to the nuclear why they are usually very hard to detect, despite their high abundance. structure become relevant. Measurements at the reactor can be used to The most common detection channels, such as the inverse beta decay get a clean, coherent scattering signal and set an anchor point for the reaction or neutrino–electron scattering, usually require target masses cross-section. With this knowledge, experiments such as COHERENT in the tonne to kilotonne range. In the Standard Model (SM) of parti- can study the nuclear structure of the corresponding target isotope cle physics, neutrinos can couple with quarks by the exchange of a with higher-energy neutrinos. Nuclear reactors provide a very high mediating Z boson. For small momentum exchanges, the possibility flux of pure electron antineutrino, whereas the accelerator-based SNS of coherent scattering of neutrinos on the sum of all nucleons of an source involves several types of neutrinos, including muon neutrinos atomic nucleus was predicted in 1974 (ref. 3). For this interaction, the and antineutrinos.
-## experiment groups
-
-_To be filled._
-## detector materials
+## One-line contribution
+{#one-line-contribution}
 
 _To be filled._
-## primary goals
+
+## Research context
+{#research-context}
 
 _To be filled._
-## background sources
+
+## Physical system / model
+{#physical-system---model}
 
 _To be filled._
-## project relevance
+
+## Methods and assumptions
+{#methods-and-assumptions}
 
 _To be filled._
-## key findings
 
-- Neutrinos are known for their tiny interaction rate with matter.
-- This is the partially coherent regime, and uncertainties related to the nuclear why they are usually very hard to detect, despite their high abundance.
-- Measurements at the reactor can be used to The most common detection channels, such as the inverse beta decay get a clean, coherent scattering signal and set an anchor point for the reaction or neutrino–electron scattering, usually require target masses cross-section.
-## limitations
+## Key results
+{#key-results}
 
-- Not yet assessed. This section should be refined after a focused reading of the full paper.
-## links
+_To be filled._
 
-- DOI: 10.1038/s41586-025-09322-2
-- arXiv: 2501.05206
-- PDF: ../../reference/pdfs/ackermann2025.pdf
+## Important equations
+{#important-equations}
+
+_To be filled._
+
+## Limitations and caveats
+{#limitations-and-caveats}
+
+_To be filled._
+
+## Relation to current project
+{#relation-to-current-project}
+
+_To be filled._
+
+## Conflicts / agreements with other sources
+{#conflicts---agreements-with-other-sources}
+
+_To be filled._
+
+## Trace index
+{#trace-index}
+
+_To be filled._

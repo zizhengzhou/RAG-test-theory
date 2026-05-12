@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+from cli_encoding import configure_utf8_stdio
+
+configure_utf8_stdio()
+
 
 def _display_path(path: Path, base_dir: Path) -> str:
     try:
@@ -22,6 +26,9 @@ def ensure_rag_dirs(rag_dir: Path, dimensions: Iterable[str] = ()) -> None:
     (rag_dir / "summary" / "sources").mkdir(parents=True, exist_ok=True)
     (rag_dir / "summary" / "synthesis").mkdir(parents=True, exist_ok=True)
     (rag_dir / "reference" / "pdfs").mkdir(parents=True, exist_ok=True)
+    (rag_dir / "reference" / "parsed").mkdir(parents=True, exist_ok=True)
+    (rag_dir / "reference" / "chunks").mkdir(parents=True, exist_ok=True)
+    (rag_dir / "reference" / "arxiv_sources").mkdir(parents=True, exist_ok=True)
     (rag_dir / "reference" / "imports").mkdir(parents=True, exist_ok=True)
     for dimension in dimensions:
         clean = dimension.strip()
@@ -66,6 +73,13 @@ def read_frontmatter(path: Path) -> tuple[dict[str, object], str]:
         return {}, text
     body = text[end + 5 :]
     frontmatter: dict[str, object] = {}
+    try:
+        import yaml
+        parsed = yaml.safe_load(text[4:end])
+        if isinstance(parsed, dict):
+            return parsed, body
+    except Exception:
+        pass
     for raw_line in text[4:end].splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or ":" not in line:
@@ -81,13 +95,11 @@ def read_frontmatter(path: Path) -> tuple[dict[str, object], str]:
 
 
 def write_frontmatter(data: dict[str, object]) -> str:
-    lines = ["---"]
-    for key, value in data.items():
-        if isinstance(value, list):
-            rendered = ", ".join(f'"{item}"' if any(ch in str(item) for ch in " :,[]") else str(item) for item in value)
-            lines.append(f"{key}: [{rendered}]")
-        else:
-            escaped = str(value).replace('"', '\\"')
-            lines.append(f'{key}: "{escaped}"' if ":" in escaped or escaped == "" else f"{key}: {escaped}")
-    lines.append("---")
-    return "\n".join(lines) + "\n"
+    import yaml
+
+    def _none_representer(dumper, _):
+        return dumper.represent_scalar("tag:yaml.org,2002:null", "null")
+
+    yaml.add_representer(type(None), _none_representer)
+    inner = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False).rstrip()
+    return f"---\n{inner}\n---\n"

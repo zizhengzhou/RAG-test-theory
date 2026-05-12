@@ -9,9 +9,9 @@ from bib_parser import parse_bibtex, parse_bibtex_file, render_bibtex
 from common import append_log
 from dedup import entry_dedup_key
 from external_search import SearchResult, fetch_inspire_bibtex, search_inspire
-from ingest import default_frontmatter, body_skeleton
+from source_page_builder import default_frontmatter, body_skeleton
 from pdf_downloader import download_arxiv_pdf
-from update_index import collect_dimension_tags, ensure_dimension_page, rebuild_auto_block
+from update_index import collect_edge_tags, ensure_category_page, rebuild_auto_block
 
 
 def _manifest_path(rag_dir: Path) -> Path:
@@ -26,12 +26,12 @@ def _existing_entries(rag_dir: Path) -> list[dict[str, str]]:
 
 
 def _refresh_indexes(rag_dir: Path) -> int:
-    tag_map = collect_dimension_tags(rag_dir)
+    tag_map = collect_edge_tags(rag_dir)
     updated = 0
-    for axis, tags in tag_map.items():
+    for category, tags in tag_map.items():
         for tag, source_keys in tags.items():
-            page = ensure_dimension_page(rag_dir, axis, tag)
-            if rebuild_auto_block(page, axis, tag, source_keys):
+            page = ensure_category_page(rag_dir, category, tag)
+            if rebuild_auto_block(page, category, tag, source_keys):
                 updated += 1
     return updated
 

@@ -45,8 +45,13 @@ def _copy_pdf(src: Path, dest_dir: Path, key: str, dry_run: bool) -> bool:
     dest = dest_dir / f"{key}.pdf"
     if dest.exists():
         return False
-    if not dry_run:
-        shutil.copy2(src, dest)
+    if dry_run:
+        if not dest_dir.exists():
+            print(f"would create directory: {dest_dir}")
+        print(f"would copy: {src} -> {dest}")
+        return True
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest)
     return True
 
 
@@ -88,7 +93,6 @@ def main() -> int:
     rag_dir = Path(args.rag_dir).resolve()
     manifest_path = rag_dir / "references.bib"
     pdfs_dir = rag_dir / "reference" / "pdfs"
-    pdfs_dir.mkdir(parents=True, exist_ok=True)
 
     if not manifest_path.exists():
         print("No references.bib found; run import-bib first")
@@ -127,7 +131,10 @@ def main() -> int:
                     print(f"match: {key} -> {pdf_path.name}")
                     copied += 1
 
-    append_log(rag_dir, "sync-pdf", f"dry_run={args.dry_run}", f"copied={copied} missing={missing}")
+    if args.dry_run:
+        print(f"would append log entry: sync-pdf dry_run={args.dry_run} copied={copied} missing={missing}")
+    else:
+        append_log(rag_dir, "sync-pdf", f"dry_run={args.dry_run}", f"copied={copied} missing={missing}")
     print(f"copied={copied} missing={missing} dry_run={args.dry_run}")
     return 0
 

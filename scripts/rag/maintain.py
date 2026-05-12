@@ -9,12 +9,9 @@ from pathlib import Path
 
 from bib_parser import parse_bibtex_file, render_bibtex
 from common import append_log, read_frontmatter, write_frontmatter
-from ingest import default_frontmatter, body_skeleton
+from source_page_builder import default_frontmatter, body_skeleton
 from pdf_validator import is_pdf
-from update_index import collect_dimension_tags, ensure_dimension_page, rebuild_auto_block
-
-
-CORE_FIELDS = {"type", "created", "last_updated", "title", "authors", "year", "venue", "doi", "arxiv", "pdf"}
+from update_index import collect_edge_tags, ensure_category_page, rebuild_auto_block
 
 
 def _manifest_path(rag_dir: Path) -> Path:
@@ -83,12 +80,12 @@ def _find_references(rag_dir: Path, key: str) -> tuple[list[Path], list[Path]]:
 
 
 def _refresh_indexes(rag_dir: Path) -> int:
-    tag_map = collect_dimension_tags(rag_dir)
+    tag_map = collect_edge_tags(rag_dir)
     updated = 0
-    for axis, tags in tag_map.items():
+    for category, tags in tag_map.items():
         for tag, source_keys in tags.items():
-            page = ensure_dimension_page(rag_dir, axis, tag)
-            if rebuild_auto_block(page, axis, tag, source_keys):
+            page = ensure_category_page(rag_dir, category, tag)
+            if rebuild_auto_block(page, category, tag, source_keys):
                 updated += 1
     return updated
 
@@ -160,6 +157,37 @@ def _parse_value(raw: str, existing: object | None) -> object:
     return raw
 
 
+def _get_nested(fm: dict[str, object], path: str) -> object | None:
+    parts = path.split(".")
+    cur: object = fm
+    for part in parts:
+        if isinstance(cur, dict):
+            cur = cur.get(part)
+        else:
+            return None
+    return cur
+
+
+def _set_nested(fm: dict[str, object], path: str, value: object) -> None:
+    parts = path.split(".")
+    cur = fm
+    for part in parts[:-1]:
+        if part not in cur or not isinstance(cur[part], dict):
+            cur[part] = {}
+        cur = cur[part]
+    cur[parts[-1]] = value
+
+
+def _deep_merge_defaults(defaults: dict[str, object], existing: dict[str, object]) -> dict[str, object]:
+    merged = dict(defaults)
+    for key, ex_val in existing.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(ex_val, dict):
+            merged[key] = {**merged[key], **ex_val}
+        else:
+            merged[key] = ex_val
+    return merged
+
+
 def _write_source_page(path: Path, fm: dict[str, object], body: str) -> None:
     text = write_frontmatter(fm) + body
     path.write_text(text, encoding="utf-8")
@@ -175,33 +203,39 @@ def update_source(args: argparse.Namespace) -> int:
         print("no --set field=value values provided")
         return 1
     fm, body = read_frontmatter(source)
-    updates: dict[str, object] = {}
+    updates: list[tuple[str, object]] = []
     for assignment in args.set_values:
         if "=" not in assignment:
             print(f"invalid --set value, expected field=value: {assignment}")
             return 1
         field, raw_value = assignment.split("=", 1)
         field = field.strip()
-        if field not in fm and not args.allow_new_field:
+        existing = _get_nested(fm, field)
+        if existing is None and not args.allow_new_field:
             print(f"field does not exist in source frontmatter: {field}")
             return 1
-        updates[field] = _parse_value(raw_value.strip(), fm.get(field))
+        updates.append((field, _parse_value(raw_value.strip(), existing)))
 
     print(f"update-source plan for {args.key}:")
-    for field, value in updates.items():
-        print(f"- {field}: {fm.get(field, '<missing>')} -> {value}")
+    for field, value in updates:
+        current = _get_nested(fm, field)
+        print(f"- {field}: {current if current is not None else '<missing>'} -> {value}")
     if args.dry_run:
         print("[dry-run] no files written")
         return 0
     if not _require_yes(args):
         return 2
 
-    fm.update(updates)
-    fm["last_updated"] = date.today().isoformat()
+    for field, value in updates:
+        _set_nested(fm, field, value)
+    status = fm.setdefault("status", {})
+    if isinstance(status, dict):
+        status["last_checked"] = date.today().isoformat()
     _write_source_page(source, fm, body)
     updated = _refresh_indexes(rag_dir)
-    append_log(rag_dir, "update-source", f"key={args.key}", f"fields={','.join(updates)} updated_indexes={updated}")
-    print(f"updated source {args.key}: fields={','.join(updates)} updated_indexes={updated}")
+    updated_field_names = [f for f, _ in updates]
+    append_log(rag_dir, "update-source", f"key={args.key}", f"fields={','.join(updated_field_names)} updated_indexes={updated}")
+    print(f"updated source {args.key}: fields={','.join(updated_field_names)} updated_indexes={updated}")
     return 0
 
 
@@ -229,10 +263,11 @@ def re_ingest(args: argparse.Namespace) -> int:
         existing_fm, existing_body = read_frontmatter(source)
 
     defaults = default_frontmatter(entry, rag_dir)
-    merged = dict(defaults)
-    merged.update(existing_fm)
+    merged = _deep_merge_defaults(defaults, existing_fm)
     changed_fields = [field for field in defaults if field not in existing_fm]
-    merged["last_updated"] = date.today().isoformat()
+    status = merged.setdefault("status", {})
+    if isinstance(status, dict):
+        status["last_checked"] = date.today().isoformat()
     body = existing_body if existing_body.strip() else f"# {merged.get('title', source.stem)}" + body_skeleton(entry, rag_dir) + "\n"
 
     print(f"re-ingest plan for {args.key}:")

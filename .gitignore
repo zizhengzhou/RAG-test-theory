@@ -1,6 +1,7 @@
-.claude/*
+.claude/settings.local.json
 __pycache__/
 *.pyc
 .DS_Store
 .vscode/
 jinlei-wiki/
+.arxiv2md_cache/

@@ -1,4 +1,4 @@
-"""Lint the RAG knowledge base for consistency issues."""
+"""Lint the DARW RAG knowledge base for consistency issues."""
 
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ from common import read_frontmatter
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 
-def load_vocabulary(rag_dir: Path) -> dict[str, set[str]]:
+def load_vocabulary_canonical_ids(rag_dir: Path) -> dict[str, set[str]]:
+    """Return {{category: {canonical_id, ...}}} from vocabulary.md terms."""
     vocab_file = rag_dir / "vocabulary.md"
     if not vocab_file.exists():
         return {}
@@ -26,12 +27,18 @@ def load_vocabulary(rag_dir: Path) -> dict[str, set[str]]:
         data = yaml.safe_load(match.group(1))
     except Exception:
         return {}
-    axes: dict[str, set[str]] = {}
-    vocab = data.get("vocabulary", data) if isinstance(data, dict) else {}
-    for axis, entries in vocab.items():
-        if isinstance(entries, dict):
-            axes[axis] = set(entries)
-    return axes
+    terms = data.get("terms", []) if isinstance(data, dict) else []
+    if not isinstance(terms, list):
+        return {}
+    cats: dict[str, set[str]] = {}
+    for term in terms:
+        if not isinstance(term, dict):
+            continue
+        cat = term.get("category", "")
+        cid = term.get("canonical_id", "")
+        if cat and cid:
+            cats.setdefault(cat, set()).add(cid)
+    return cats
 
 
 def check_dead_links(rag_dir: Path) -> list[str]:
@@ -62,32 +69,65 @@ def check_bibtex_manifest(rag_dir: Path) -> list[str]:
     return issues
 
 
-def check_source_fm(rag_dir: Path, vocabulary: dict[str, set[str]]) -> list[str]:
+def check_source_fm(rag_dir: Path, vocab_ids: dict[str, set[str]], *, strict: bool = False) -> list[str]:
     issues: list[str] = []
     sources_dir = rag_dir / "summary" / "sources"
     if not sources_dir.is_dir():
         return issues
     for page in sources_dir.glob("*.md"):
-        fm, _ = read_frontmatter(page)
-        if fm.get("type") != "source":
-            issues.append(f"source page missing type=source: {page.relative_to(rag_dir)}")
-        required = ["created", "title"]
-        for field in required:
-            if field not in fm:
-                issues.append(f"missing frontmatter field '{field}' in {page.relative_to(rag_dir)}")
-        for key, value in fm.items():
-            if isinstance(value, list):
-                axis = key if key.endswith("s") else key + "s"
-                if axis in vocabulary:
-                    valid_tags = vocabulary[axis]
-                    for tag in value:
-                        tag_clean = tag.strip().strip('"')
-                        if tag_clean and tag_clean not in valid_tags:
-                            issues.append(f"off-vocab tag '{tag_clean}' in {page.relative_to(rag_dir)} (axis={axis})")
-        tag_count = sum(1 for v in fm.values() if isinstance(v, list) and v)
-        if tag_count == 0:
-            issues.append(f"orphan source (no dimension tags): {page.relative_to(rag_dir)}")
+        fm, body = read_frontmatter(page)
+        rel = str(page.relative_to(rag_dir))
+
+        if fm.get("schema_version") != "darw-source-v1":
+            issues.append(f"missing or wrong schema_version in {rel}")
+
+        for field in ("doc_id", "citation_key"):
+            if not fm.get(field):
+                issues.append(f"missing frontmatter field '{field}' in {rel}")
+
+        edges = fm.get("edges")
+        if not isinstance(edges, dict):
+            issues.append(f"missing edges block in {rel}")
+            continue
+
+        valid_categories = set(vocab_ids.keys())
+        for category, entries in edges.items():
+            if valid_categories and category not in valid_categories:
+                issues.append(f"unknown edge category '{category}' in {rel}")
+                continue
+            if not isinstance(entries, list):
+                continue
+            valid_ids = vocab_ids.get(category, set())
+            for entry in entries:
+                if isinstance(entry, dict):
+                    cid = entry.get("canonical_id", "")
+                elif isinstance(entry, str):
+                    cid = entry
+                else:
+                    continue
+                cid = str(cid).strip()
+                if not cid:
+                    continue
+                if valid_ids and cid not in valid_ids:
+                    issues.append(f"off-vocab canonical_id '{cid}' in {rel} (category={category})")
+
+        tag_count = sum(
+            len(v) for v in edges.values() if isinstance(v, list)
+        )
+        if tag_count == 0 and strict:
+            issues.append(f"source page has no edges: {rel}")
+
     return issues
+
+
+def _resolve_rag_path(rag_dir: Path, page: Path, value: str) -> Path:
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return candidate
+    rag_root_path = (rag_dir / candidate).resolve()
+    if rag_root_path.exists() or value.startswith(("reference/", "summary/", "indexes/")):
+        return rag_root_path
+    return (page.parent / candidate).resolve()
 
 
 def check_pdf_refs(rag_dir: Path) -> list[str]:
@@ -98,8 +138,12 @@ def check_pdf_refs(rag_dir: Path) -> list[str]:
     for page in sources_dir.glob("*.md"):
         fm, _ = read_frontmatter(page)
         pdf_ref = fm.get("pdf", "")
+        if not pdf_ref:
+            source = fm.get("source")
+            if isinstance(source, dict):
+                pdf_ref = source.get("original_pdf", "")
         if pdf_ref:
-            pdf_path = (page.parent / pdf_ref).resolve()
+            pdf_path = _resolve_rag_path(rag_dir, page, str(pdf_ref))
             if not pdf_path.exists():
                 issues.append(f"missing PDF for {page.relative_to(rag_dir)}: {pdf_ref}")
     return issues
@@ -117,19 +161,35 @@ def check_auto_blocks(rag_dir: Path) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Lint RAG knowledge base")
+    parser = argparse.ArgumentParser(description="Lint DARW RAG knowledge base")
     parser.add_argument("--rag-dir", default="RAG")
+    parser.add_argument("--strict", action="store_true",
+                        help="treat warnings as errors (empty edges, metadata-only pages)")
     args = parser.parse_args()
 
     rag_dir = Path(args.rag_dir).resolve()
     issues: list[str] = []
-    vocabulary = load_vocabulary(rag_dir)
+    vocab_ids = load_vocabulary_canonical_ids(rag_dir)
 
+    # Core lint checks
     issues.extend(check_bibtex_manifest(rag_dir))
-    issues.extend(check_source_fm(rag_dir, vocabulary))
+    issues.extend(check_source_fm(rag_dir, vocab_ids, strict=args.strict))
     issues.extend(check_pdf_refs(rag_dir))
     issues.extend(check_dead_links(rag_dir))
     issues.extend(check_auto_blocks(rag_dir))
+
+    # Phase 5 validators
+    from validate_evidence import validate_evidence
+    from validate_source_pages import validate_source_pages
+    from validate_vocabulary import validate_vocabulary
+
+    vocab_issues = validate_vocabulary(rag_dir)
+    source_issues = [issue for issue in validate_source_pages(rag_dir, strict=args.strict) if args.strict or not issue.startswith("[warning]")]
+    evidence_issues = validate_evidence(rag_dir)
+
+    issues.extend(vocab_issues)
+    issues.extend(source_issues)
+    issues.extend(evidence_issues)
 
     print(f"# RAG Lint Report\n")
     print(f"Linted: {rag_dir}\n")

@@ -11,11 +11,6 @@
 
 - [Sources](summary/sources/)
 - [Synthesis](summary/synthesis/)
-- [experiment-groups](summary/experiment-groups/)
-- [detector-materials](summary/detector-materials/)
-- [primary-goals](summary/primary-goals/)
-- [background-sources](summary/background-sources/)
-- [project-relevance](summary/project-relevance/)
 
 ## Source pages
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import tempfile
 import zipfile
@@ -13,6 +14,35 @@ from dedup import entry_dedup_key
 from pdf_validator import is_pdf
 from rdf_parser import parse_rdf
 from common import append_log
+
+
+def _sanitize_key(raw: str) -> str:
+    """Sanitize a raw citation key: lowercase, strip braces, replace non-alnum with dash."""
+    key = raw.replace("{", "").replace("}", "").strip().lower()
+    key = re.sub(r"[^a-z0-9]+", "-", key).strip("-")
+    return key or "entry"
+
+
+def _unique_key(base: str, used: set[str]) -> str:
+    """Return *base* if not in *used*, otherwise ``base-2``, ``base-3``, etc."""
+    if base not in used:
+        used.add(base)
+        return base
+    n = 2
+    while f"{base}-{n}" in used:
+        n += 1
+    key = f"{base}-{n}"
+    used.add(key)
+    return key
+
+
+def _resolve_pdf_path(att_path_str: str, tmp_path: Path) -> Path | None:
+    """Find an attachment file inside the extracted zip tree by name."""
+    att_name = Path(att_path_str).name
+    for candidate in tmp_path.rglob("**/*"):
+        if candidate.is_file() and candidate.name == att_name:
+            return candidate
+    return None
 
 
 def main() -> int:
@@ -51,15 +81,22 @@ def main() -> int:
         new_bib_entries: list[dict[str, str]] = []
         copied_pdfs = 0
         skipped_html = 0
+        skipped_duplicate = 0
 
-        # Build bib entries first, then check dedup before copying PDFs
-        # so we use the existing entry's key when an entry is already in the manifest
         existing_entries = parse_bibtex_file(manifest_path) if manifest_path.exists() else []
-        existing_key_map: dict[tuple[str, str], str] = {}
+
+        # Existing dedup-key → BibTeX key mapping
+        existing_dedup_map: dict[tuple[str, str], str] = {}
         for ee in existing_entries:
             dk = entry_dedup_key(ee)
-            if dk not in existing_key_map:
-                existing_key_map[dk] = ee.get("ID", "")
+            if dk not in existing_dedup_map:
+                existing_dedup_map[dk] = ee.get("ID", "")
+
+        # All known BibTeX keys (existing + already-used-in-batch) for collision avoidance
+        used_keys: set[str] = {ee.get("ID", "") for ee in existing_entries}
+
+        # Dedup keys already seen in this batch
+        batch_dedup_keys: set[tuple[str, str]] = set()
 
         for i, item in enumerate(items):
             title = item["title"]
@@ -67,13 +104,19 @@ def main() -> int:
             arxiv = item["identifiers"].get("arxiv", "")
             authors = " and ".join(item["authors"])
             year = item["date"][:4] if item["date"] else ""
-            first_author = item["authors"][0] if item["authors"] else ""
-            last_name = first_author.split(",")[0].strip().split()[-1] if first_author else ""
-            bib_key = (
-                last_name.replace("{", "").replace("}", "").lower() + year
-                if last_name and year
-                else f"entry-{i + 1}"
-            )
+
+            # --- Key generation: prefer Zotero citation key, then author-year, then entry-N ---
+            zotero_key = str(item.get("citation_key", "")).strip()
+            if zotero_key:
+                base_key = _sanitize_key(zotero_key)
+            else:
+                first_author = item["authors"][0] if item["authors"] else ""
+                last_name = first_author.split(",")[0].strip().split()[-1] if first_author else ""
+                if last_name and year:
+                    base_key = _sanitize_key(last_name + year)
+                else:
+                    base_key = f"entry-{i + 1}"
+            bib_key = _unique_key(base_key, used_keys)
 
             entry: dict[str, str] = {
                 "ENTRYTYPE": "article",
@@ -87,21 +130,25 @@ def main() -> int:
             if arxiv:
                 entry["eprint"] = arxiv
 
-            new_bib_entries.append(entry)
-
-            # Resolve dedup: use existing key for PDF naming if duplicate
+            # --- Dedup: skip if already in existing entries or already in this batch ---
             dk = entry_dedup_key(entry)
-            pdf_key = existing_key_map.get(dk, bib_key)
+            if dk in existing_dedup_map:
+                pdf_key = existing_dedup_map[dk]
+                print(f"  duplicate of existing: {title[:80]} → {pdf_key}")
+            elif dk in batch_dedup_keys:
+                print(f"  duplicate within import: {title[:80]}")
+                skipped_duplicate += 1
+                continue
+            else:
+                batch_dedup_keys.add(dk)
+                new_bib_entries.append(entry)
+                pdf_key = bib_key
 
+            # --- Copy attachments ---
             for att in item["attachments"]:
                 att_path_str = att.get("path", "")
                 att_type = att.get("type", "")
-                resolved = None
-                att_name = Path(att_path_str).name
-                for candidate in tmp_path.rglob("**/*"):
-                    if candidate.is_file() and candidate.name == att_name:
-                        resolved = candidate
-                        break
+                resolved = _resolve_pdf_path(att_path_str, tmp_path)
                 if not resolved:
                     continue
                 if is_pdf(resolved):
@@ -114,17 +161,17 @@ def main() -> int:
                     print(f"  skip non-PDF: {resolved.name}")
                     skipped_html += 1
 
-        # dedup and append BibTeX
-        existing_dedup_keys = {entry_dedup_key(e) for e in existing_entries}
-        unique = [e for e in new_bib_entries if entry_dedup_key(e) not in existing_dedup_keys]
-
-        if unique and not args.dry_run:
+        # Append new BibTeX entries
+        if new_bib_entries and not args.dry_run:
             with manifest_path.open("a", encoding="utf-8") as out:
-                for entry in unique:
+                for entry in new_bib_entries:
                     out.write(render_bibtex(entry))
                     out.write("\n\n")
 
-        report = f"entries={len(new_bib_entries)} new_bib={len(unique)} pdfs={copied_pdfs} skipped_html={skipped_html}"
+        report = (
+            f"entries={len(items)} new_bib={len(new_bib_entries)} "
+            f"skipped_dup={skipped_duplicate} pdfs={copied_pdfs} skipped_html={skipped_html}"
+        )
         print(report)
         if args.dry_run:
             print("[dry-run] no files written")

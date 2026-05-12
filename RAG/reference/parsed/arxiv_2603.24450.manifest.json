@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "arxiv:2603.24450",
+  "citation_key": "abeleProspectNUCLEUSExperiment2026",
+  "route": "arxiv_source",
+  "arxiv_id": "2603.24450",
+  "doi": "10.48550/arxiv.2603.24450",
+  "parser": "arxiv2md",
+  "parser_version": "0.1.1",
+  "source_sha256": "d09ef94d9593634295829bdf4120407a97ba7891cc482c62aaba3d0777ce70e7",
+  "parsed_markdown": "reference/parsed/arxiv_2603.24450.md",
+  "original_pdf": "reference/pdfs/abeleProspectNUCLEUSExperiment2026.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-12"
+}

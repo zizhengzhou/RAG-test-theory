@@ -1,4 +1,4 @@
-"""End-to-end RAG workflow test."""
+"""End-to-end DARW RAG workflow test."""
 
 import sys
 import tempfile
@@ -6,11 +6,11 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
-from common import ensure_rag_dirs, append_log
+from common import ensure_rag_dirs, append_log, write_frontmatter
 from bib_parser import parse_bibtex_file, render_bibtex
 from dedup import deduplicate_entries
 from pdf_validator import is_pdf
-from ingest import default_frontmatter
+from source_page_builder import default_frontmatter
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -26,12 +26,12 @@ class TestRAGWorkflow(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_init_creates_directory_structure(self):
-        ensure_rag_dirs(self.rag_dir, ["methods", "models"])
+        ensure_rag_dirs(self.rag_dir, ["research_areas", "techniques"])
         required = [
             "summary/sources",
             "summary/synthesis",
-            "summary/methods",
-            "summary/models",
+            "summary/research_areas",
+            "summary/techniques",
             "reference/pdfs",
             "reference/imports",
         ]
@@ -39,21 +39,13 @@ class TestRAGWorkflow(unittest.TestCase):
             self.assertTrue((self.rag_dir / path).is_dir(), f"missing {path}")
 
     def test_init_creates_rag_files(self):
-        from rag_init import main as rag_init_main
-        import io
-        import contextlib
-
-        # Use temporary to avoid mutating real RAG
         import subprocess
-        import shutil
+
         result = subprocess.run(
             [
                 sys.executable,
                 str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "rag_init.py"),
                 "--rag-dir", str(self.rag_dir),
-                "--dimensions", "methods,models",
-                "--template-fields", "summary,key findings",
-                "--vocabulary", "methods",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
@@ -61,16 +53,21 @@ class TestRAGWorkflow(unittest.TestCase):
         for file in ["SKILL.md", "index.md", "template.md", "vocabulary.md", "log.md"]:
             self.assertTrue((self.rag_dir / file).exists(), f"missing {file}")
 
+        # Verify new DARW directories
+        self.assertTrue((self.rag_dir / "indexes").is_dir())
+        self.assertTrue((self.rag_dir / "reference" / "parsed").is_dir())
+        self.assertTrue((self.rag_dir / "reference" / "chunks").is_dir())
+        self.assertTrue((self.rag_dir / "reference" / "arxiv_sources").is_dir())
+
     def test_bib_import_then_ingest_then_query(self):
-        # Setup a minimal RAG init
         import subprocess
+
+        # RAG init
         init_result = subprocess.run(
             [
                 sys.executable,
                 str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "rag_init.py"),
                 "--rag-dir", str(self.rag_dir),
-                "--dimensions", "methods,models",
-                "--template-fields", "summary,key findings",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
@@ -98,7 +95,7 @@ class TestRAGWorkflow(unittest.TestCase):
         ingest_result = subprocess.run(
             [
                 sys.executable,
-                str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "ingest.py"),
+                str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "build_source_pages.py"),
                 "--rag-dir", str(self.rag_dir),
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -108,7 +105,14 @@ class TestRAGWorkflow(unittest.TestCase):
         self.assertTrue((self.rag_dir / "summary" / "sources" / "chen2024improved.md").exists())
         self.assertTrue((self.rag_dir / "summary" / "sources" / "lee2024survey.md").exists())
 
-        # update-index
+        # Verify DARW schema_version in generated source pages
+        from common import read_frontmatter
+        fm, _ = read_frontmatter(self.rag_dir / "summary" / "sources" / "smith2023benchmark.md")
+        self.assertEqual(fm.get("schema_version"), "darw-source-v1")
+        self.assertIsInstance(fm.get("edges"), dict)
+        self.assertEqual(fm["edges"]["research_areas"], [])
+
+        # update-index (should run without error even with empty edges)
         idx_result = subprocess.run(
             [
                 sys.executable,
@@ -157,7 +161,7 @@ class TestRAGWorkflow(unittest.TestCase):
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
-        # lint should run; exit 1 is normal when issues are found
+        # lint may report issues (exit 1) or be clean (exit 0) — both are fine
         self.assertIn(lint_result.returncode, (0, 1),
             f"lint crashed: code={lint_result.returncode} stderr={lint_result.stderr}")
 
@@ -184,7 +188,7 @@ class TestRAGWorkflow(unittest.TestCase):
         self.assertFalse((self.rag_dir / "references.bib").exists())
         self.assertFalse((self.rag_dir / "log.md").exists())
 
-    def test_update_index_ignores_non_dimension_lists(self):
+    def test_lint_rejects_source_without_darw_schema(self):
         import subprocess
 
         init_result = subprocess.run(
@@ -192,39 +196,36 @@ class TestRAGWorkflow(unittest.TestCase):
                 sys.executable,
                 str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "rag_init.py"),
                 "--rag-dir", str(self.rag_dir),
-                "--dimensions", "methods",
-                "--vocabulary", "methods",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         self.assertEqual(init_result.returncode, 0)
+
         source_dir = self.rag_dir / "summary" / "sources"
         source_dir.mkdir(parents=True, exist_ok=True)
-        (source_dir / "paper.md").write_text(
-            "---\ntype: source\ncreated: 2025-01-01\ntitle: T\nauthors: [Alice, Bob]\nmethods: [uncategorized]\n---\n",
+        # Write a source page without darw-source-v1 schema
+        (source_dir / "old_paper.md").write_text(
+            "---\ntype: source\ncreated: 2025-01-01\ntitle: T\n---\n\n# T\n",
             encoding="utf-8",
         )
 
         result = subprocess.run(
             [
                 sys.executable,
-                str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "update_index.py"),
+                str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "rag_lint.py"),
                 "--rag-dir", str(self.rag_dir),
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
-        self.assertEqual(result.returncode, 0)
-        self.assertTrue((self.rag_dir / "summary" / "methods" / "uncategorized.md").exists())
-        self.assertFalse((self.rag_dir / "summary" / "authors").exists())
+        self.assertIn(result.returncode, (0, 1))
+        self.assertIn("schema_version", result.stdout)
 
     def test_zip_importer_dry_run(self):
         import subprocess
 
-        # Use fixture zip
         zip_path = FIXTURES / "zotero-rdf-minimal.zip"
         self.assertTrue(zip_path.exists(), "zotero-rdf-minimal.zip fixture missing")
 
-        # Create references.bib first so import-zip can append
         (self.rag_dir / "references.bib").parent.mkdir(parents=True, exist_ok=True)
         (self.rag_dir / "references.bib").write_text("")
 

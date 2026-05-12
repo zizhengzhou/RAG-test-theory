@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
-from rag_lint import check_bibtex_manifest, check_dead_links, check_source_fm, check_pdf_refs, check_auto_blocks, load_vocabulary
+from rag_lint import check_bibtex_manifest, check_dead_links, check_source_fm, check_pdf_refs, check_auto_blocks, load_vocabulary_canonical_ids
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -80,22 +80,47 @@ class TestLint(unittest.TestCase):
             rag_dir = Path(td)
             (rag_dir / "summary" / "sources").mkdir(parents=True)
             (rag_dir / "summary" / "sources" / "test.md").write_text(
-                "---\ntype: source\ncreated: 2025-01-01\ntitle: T\n---\n"
+                "---\nschema_version: darw-source-v1\ndoc_id: test:1\ncitation_key: test\nedges:\n  research_areas: []\n  physical_systems: []\n  techniques: []\n  properties: []\n  models: []\n  observables: []\n  datasets: []\n  experiments: []\n---\n"
             )
-            issues = check_source_fm(rag_dir, {})
-            self.assertTrue(any("orphan" in i.lower() for i in issues))
+            issues = check_source_fm(rag_dir, {}, strict=True)
+            self.assertTrue(any("no edges" in i.lower() for i in issues))
 
-    def test_uncategorized_is_valid_vocabulary_tag(self):
+    def test_on_vocab_canonical_id_is_valid(self):
         with tempfile.TemporaryDirectory() as td:
             rag_dir = Path(td)
             (rag_dir / "summary" / "sources").mkdir(parents=True)
             (rag_dir / "vocabulary.md").write_text(
-                "# Controlled Vocabulary\n\n```yaml\nvocabulary:\n  methods:\n    uncategorized:\n      canonical: Uncategorized\n```\n"
+                "# DARW Vocabulary\n\n```yaml\nterms:\n"
+                "  - canonical_id: \"local:test-method\"\n"
+                "    label: \"Test Method\"\n"
+                "    namespace: \"local\"\n"
+                "    category: \"techniques\"\n"
+                "    aliases: []\n"
+                "    source: \"project\"\n"
+                "    needs_review: true\n"
+                "```\n"
             )
+            from common import write_frontmatter
+            fm = {
+                "schema_version": "darw-source-v1",
+                "doc_id": "test:1",
+                "citation_key": "test",
+                "edges": {
+                    "research_areas": [],
+                    "physical_systems": [],
+                    "techniques": [{"canonical_id": "local:test-method", "label": "Test Method"}],
+                    "properties": [],
+                    "models": [],
+                    "observables": [],
+                    "datasets": [],
+                    "experiments": [],
+                },
+            }
             (rag_dir / "summary" / "sources" / "test.md").write_text(
-                "---\ntype: source\ncreated: 2025-01-01\ntitle: T\nmethods: [uncategorized]\n---\n"
+                write_frontmatter(fm) + "\n# Test\n"
             )
-            issues = check_source_fm(rag_dir, load_vocabulary(rag_dir))
+            vocab_ids = load_vocabulary_canonical_ids(rag_dir)
+            issues = check_source_fm(rag_dir, vocab_ids)
             self.assertFalse(any("off-vocab" in i.lower() for i in issues))
 
     def test_auto_block_mismatch(self):
