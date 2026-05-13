@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "10.1038/nature02037",
+  "citation_key": "dayBroadbandSuperconductingDetector2003",
+  "route": "pdf_pymupdf",
+  "arxiv_id": "",
+  "doi": "10.1038/nature02037",
+  "parser": "pymupdf4llm",
+  "parser_version": "1.27.2.3",
+  "source_sha256": "eec92e7dbe53fc07b71fa0a04b310f5ae129f6b15b3ce8042d0dd304f62c47ce",
+  "parsed_markdown": "reference/parsed/10.1038_nature02037.md",
+  "original_pdf": "reference/pdfs/dayBroadbandSuperconductingDetector2003.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-13"
+}

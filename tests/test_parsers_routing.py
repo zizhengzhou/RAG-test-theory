@@ -40,6 +40,22 @@ class TestParsersRouting(unittest.TestCase):
             metadata_conflicts=[],
         )
 
+    def resolved_arxiv_with_pdf(self):
+        pdf_path = self.rag_dir / "reference" / "pdfs" / "paper.pdf"
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+        return ResolvedSource(
+            doc_id="arxiv:2301.12345",
+            citation_key="paper",
+            arxiv_id="2301.12345",
+            doi="10.1234/example",
+            title="Paper",
+            pdf_path="reference/pdfs/paper.pdf",
+            route="arxiv_source",
+            needs_review=False,
+            metadata_conflicts=[],
+        )
+
     def test_register_parsed_markdown_writes_manifest(self):
         evidence = register_parsed_markdown(self.resolved(), self.rag_dir, self.parsed, parser_name="arxiv2md")
         manifest = parsed_manifest_path(self.rag_dir, evidence.doc_id)
@@ -65,6 +81,29 @@ class TestParsersRouting(unittest.TestCase):
         _save_arxiv_cache(self.rag_dir, "2301.12345", "test-version", content)
         self.assertEqual(_load_arxiv_cache(self.rag_dir, "2301.12345", "test-version"), content)
         self.assertIsNone(_load_arxiv_cache(self.rag_dir, "2301.12345", "other-version"))
+
+    def test_arxiv_route_does_not_fallback_without_explicit_opt_in(self):
+        from unittest.mock import patch
+
+        resolved = self.resolved_arxiv_with_pdf()
+        with patch("parsers._run_arxiv2md", side_effect=EvidenceResolutionError("arxiv failed")):
+            with self.assertRaises(EvidenceResolutionError):
+                parse_evidence(resolved, self.rag_dir)
+
+    def test_arxiv_route_falls_back_to_local_pdf_when_explicitly_enabled(self):
+        from unittest.mock import patch
+
+        resolved = self.resolved_arxiv_with_pdf()
+        with patch("parsers._run_arxiv2md", side_effect=EvidenceResolutionError("arxiv failed")):
+            with patch("parsers._run_pdf_to_md", return_value="# PDF\n\nFallback evidence."):
+                evidence = parse_evidence(resolved, self.rag_dir, fallback_pdf_on_arxiv_fail=True)
+
+        self.assertEqual(evidence.doc_id, "arxiv:2301.12345")
+        self.assertEqual(evidence.route, "pdf_pymupdf")
+        self.assertEqual(evidence.original_pdf, "reference/pdfs/paper.pdf")
+        manifest = parsed_manifest_path(self.rag_dir, "arxiv:2301.12345")
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        self.assertEqual(data["route"], "pdf_pymupdf")
 
 
 if __name__ == "__main__":

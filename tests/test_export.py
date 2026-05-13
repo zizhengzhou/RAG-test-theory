@@ -98,6 +98,64 @@ class TestExport(unittest.TestCase):
         output = "\n".join(str(call.args[0]) for call in printed.call_args_list)
         self.assertIn("INSPIRE:canonical", output)
 
+    def test_get_bibtex_defaults_to_local_fallback_when_inspire_missing(self):
+        args = Namespace(
+            rag_dir=str(self.rag_dir),
+            query=[],
+            key=["chen2024improved"],
+            tag=[],
+            limit=5,
+            provider="inspire",
+            fallback_local=True,
+            strict_provider="",
+            format="bibtex",
+            json=False,
+        )
+        with patch("export._inspire_results_for_candidate", return_value=[]), patch("builtins.print") as printed:
+            result = command_get_bibtex(args)
+
+        self.assertEqual(result, 0)
+        output = "\n".join(str(call.args[0]) for call in printed.call_args_list)
+        self.assertIn("@article{chen2024improved", output)
+
+    def test_get_bibtex_strict_provider_fails_when_inspire_missing(self):
+        args = Namespace(
+            rag_dir=str(self.rag_dir),
+            query=[],
+            key=["chen2024improved"],
+            tag=[],
+            limit=5,
+            provider="inspire",
+            fallback_local=False,
+            strict_provider="inspire",
+            format="bibtex",
+            json=False,
+        )
+        with patch("export._inspire_results_for_candidate", return_value=[]):
+            with self.assertRaises(RuntimeError):
+                command_get_bibtex(args)
+
+    def test_get_bibtex_json_metadata_marks_fallback(self):
+        args = Namespace(
+            rag_dir=str(self.rag_dir),
+            query=[],
+            key=["chen2024improved"],
+            tag=[],
+            limit=5,
+            provider="inspire",
+            fallback_local=True,
+            strict_provider="",
+            format="bibtex",
+            json=True,
+        )
+        with patch("export._inspire_results_for_candidate", return_value=[]), patch("builtins.print") as printed:
+            result = command_get_bibtex(args)
+
+        self.assertEqual(result, 0)
+        output = "\n".join(str(call.args[0]) for call in printed.call_args_list)
+        self.assertIn('"fallback_used": true', output)
+        self.assertIn('"provider_used": "local"', output)
+
     def test_export_reading_list_contains_links(self):
         args = Namespace(
             rag_dir=str(self.rag_dir),

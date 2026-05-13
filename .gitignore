@@ -5,3 +5,4 @@ __pycache__/
 .vscode/
 jinlei-wiki/
 .arxiv2md_cache/
+.tmp_*/*

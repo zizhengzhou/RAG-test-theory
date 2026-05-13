@@ -64,6 +64,21 @@ class TestEvidenceIngest(unittest.TestCase):
         self.assertFalse(parsed_manifest_path(self.rag_dir, "arxiv:2401.12345").exists())
         self.assertFalse((self.rag_dir / "summary" / "sources" / "paper.md").exists())
 
+    def test_source_frontmatter_uses_manifest_route_after_explicit_fallback(self):
+        from unittest.mock import patch
+
+        pdf_path = self.rag_dir / "reference" / "pdfs" / "paper.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+        with patch("parsers._run_arxiv2md", side_effect=__import__("parsers").EvidenceResolutionError("arxiv failed")):
+            with patch("parsers._run_pdf_to_md", return_value="# PDF\n\nFallback evidence."):
+                self.assertTrue(ingest_entry(self.entry, self.rag_dir, fallback_pdf_on_arxiv_fail=True))
+
+        source = self.rag_dir / "summary" / "sources" / "paper.md"
+        fm, _ = read_frontmatter(source)
+        self.assertEqual(fm["doc_id"], "arxiv:2401.12345")
+        self.assertEqual(fm["source"]["source_type"], "pdf_pymupdf")
+        self.assertIn("route fallback: arxiv_source -> pdf_pymupdf", fm["quality"]["metadata_conflicts"])
+
 
 if __name__ == "__main__":
     unittest.main()

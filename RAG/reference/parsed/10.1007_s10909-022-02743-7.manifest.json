@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "10.1007/s10909-022-02743-7",
+  "citation_key": "kinastImprovingQualityCaWO42022",
+  "route": "pdf_pymupdf",
+  "arxiv_id": "",
+  "doi": "10.1007/s10909-022-02743-7",
+  "parser": "pymupdf4llm",
+  "parser_version": "1.27.2.3",
+  "source_sha256": "58f359f1268d91ab85ab0f41bc5fa11b5621f1799fd0c850c02579159e640ced",
+  "parsed_markdown": "reference/parsed/10.1007_s10909-022-02743-7.md",
+  "original_pdf": "reference/pdfs/kinastImprovingQualityCaWO42022.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-13"
+}

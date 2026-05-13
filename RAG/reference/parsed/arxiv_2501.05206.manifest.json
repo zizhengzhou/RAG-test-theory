@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "arxiv:2501.05206",
+  "citation_key": "ackermann2025",
+  "route": "pdf_pymupdf",
+  "arxiv_id": "2501.05206",
+  "doi": "10.1038/s41586-025-09322-2",
+  "parser": "pymupdf4llm",
+  "parser_version": "1.27.2.3",
+  "source_sha256": "c0777923089f296c956085b88d0625c3f5a0c0b4980a1816d50d75901b788ebf",
+  "parsed_markdown": "reference/parsed/arxiv_2501.05206.md",
+  "original_pdf": "reference/pdfs/ackermann2025.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-13"
+}

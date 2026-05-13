@@ -63,7 +63,35 @@ def _collect_source_page_edge_ids(rag_dir: Path) -> set[str]:
     return ids
 
 
-def validate_vocabulary(rag_dir: Path) -> list[str]:
+def _validate_physh_terms_online(terms: list[dict]) -> list[str]:
+    issues: list[str] = []
+    from physh_mapper import query_concept
+
+    for i, term in enumerate(terms):
+        if not isinstance(term, dict):
+            continue
+        cid = str(term.get("canonical_id", "")).strip()
+        namespace = str(term.get("namespace", "")).strip()
+        if not cid.startswith("physh:") and namespace != "physh":
+            continue
+        if not cid.startswith("physh:"):
+            issues.append(f"term[{i}] namespace is physh but canonical_id is not physh:*: {cid}")
+            continue
+        concept_id = cid.split(":", 1)[1]
+        concept = query_concept(concept_id)
+        if not concept:
+            issues.append(f"PhySH concept not found for {cid}")
+            continue
+        label = str(term.get("label", "")).strip()
+        physh_label = str(concept.get("label", "")).strip()
+        if not physh_label:
+            issues.append(f"PhySH concept has no label for {cid}")
+        elif label != physh_label:
+            issues.append(f"PhySH label mismatch for {cid}: vocabulary='{label}' physh='{physh_label}'")
+    return issues
+
+
+def validate_vocabulary(rag_dir: Path, *, online_physh: bool = False) -> list[str]:
     issues: list[str] = []
     data, parse_issues = _extract_vocab_terms(rag_dir)
     issues.extend(parse_issues)
@@ -92,6 +120,10 @@ def validate_vocabulary(rag_dir: Path) -> list[str]:
         namespace = str(term.get("namespace", ""))
         if namespace == "alias:":
             issues.append(f"term[{i}] has namespace 'alias:' but is listed as a canonical term")
+        if cid.startswith("physh:") and namespace != "physh":
+            issues.append(f"term[{i}] canonical_id is physh:* but namespace is '{namespace}'")
+        if namespace == "physh" and not cid.startswith("physh:"):
+            issues.append(f"term[{i}] namespace is physh but canonical_id is not physh:*")
         if cid:
             if cid in seen_ids:
                 issues.append(f"duplicate canonical_id in vocabulary: {cid}")
@@ -111,15 +143,19 @@ def validate_vocabulary(rag_dir: Path) -> list[str]:
     for cid in sorted(alias_in_edges):
         issues.append(f"alias '{cid}' used as final canonical_id in source page edges")
 
+    if online_physh:
+        issues.extend(_validate_physh_terms_online(terms))
+
     return issues
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate DARW vocabulary.md")
     parser.add_argument("--rag-dir", default="RAG")
+    parser.add_argument("--online-physh", action="store_true", help="Verify physh:* terms against the live PhySH API")
     args = parser.parse_args()
     rag_dir = Path(args.rag_dir).resolve()
-    issues = validate_vocabulary(rag_dir)
+    issues = validate_vocabulary(rag_dir, online_physh=args.online_physh)
     if issues:
         print(f"Vocabulary issues found: {len(issues)}")
         for issue in issues:

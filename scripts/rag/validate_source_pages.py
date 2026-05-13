@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from common import read_frontmatter
+from common import read_frontmatter, resolve_rag_path
 from darw_schema import (
     ARXIV_SOURCE,
     EDGE_CATEGORIES,
@@ -56,16 +56,6 @@ def _parse_claim_blocks(body: str) -> list[dict]:
         except Exception:
             continue
     return claims
-
-
-def _resolve_rag_path(rag_dir: Path, page: Path, value: str) -> Path:
-    candidate = Path(value)
-    if candidate.is_absolute():
-        return candidate
-    rag_root_path = (rag_dir / candidate).resolve()
-    if rag_root_path.exists() or value.startswith(("reference/", "summary/", "indexes/")):
-        return rag_root_path
-    return (page.parent / candidate).resolve()
 
 
 def validate_source_pages(rag_dir: Path, strict: bool = False) -> list[str]:
@@ -138,12 +128,12 @@ def validate_source_pages(rag_dir: Path, strict: bool = False) -> list[str]:
         if isinstance(source, dict):
             primary_ev = str(source.get("primary_evidence", ""))
             if primary_ev:
-                ev_path = _resolve_rag_path(rag_dir, page, primary_ev)
+                ev_path = resolve_rag_path(rag_dir, page, primary_ev)
                 if not ev_path.exists():
                     issues.append(f"primary_evidence target missing in {rel}: {primary_ev}")
             chunk_manifest = str(fm.get("chunk_manifest", ""))
             if chunk_manifest:
-                cm_path = _resolve_rag_path(rag_dir, page, chunk_manifest)
+                cm_path = resolve_rag_path(rag_dir, page, chunk_manifest)
                 if not cm_path.exists():
                     issues.append(f"chunk_manifest target missing in {rel}: {chunk_manifest}")
 
@@ -175,11 +165,12 @@ def main() -> int:
     args = parser.parse_args()
     rag_dir = Path(args.rag_dir).resolve()
     issues = validate_source_pages(rag_dir, strict=args.strict)
+    blocking = [issue for issue in issues if args.strict or not issue.startswith("[warning]")]
     if issues:
         print(f"Source page issues found: {len(issues)}")
         for issue in issues:
             print(f"- [ ] {issue}")
-        return 1
+        return 1 if blocking else 0
     print("No source page issues found.")
     return 0
 

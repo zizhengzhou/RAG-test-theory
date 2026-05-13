@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
 
@@ -36,6 +37,24 @@ terms:
     category: "techniques"
     aliases: ["test-alias"]
     source: "user"
+    needs_review: false
+```
+"""
+
+VOCAB_WITH_PHYSH_TERM = """# DARW Vocabulary
+
+Schema version: `darw-vocabulary-v1`
+
+## Terms
+
+```yaml
+terms:
+  - canonical_id: "physh:abc123"
+    label: "Breakup reactions"
+    namespace: "physh"
+    category: "research_areas"
+    aliases: []
+    source: "physh"
     needs_review: false
 ```
 """
@@ -134,6 +153,34 @@ class TestValidateVocabulary(unittest.TestCase):
         })
         issues = validate_vocabulary(self.rag_dir)
         self.assertTrue(any("alias" in i and "test-alias" in i for i in issues))
+
+    @patch("physh_mapper.query_concept")
+    def test_online_physh_validation_accepts_real_returned_label(self, query_concept):
+        query_concept.return_value = {"id": "abc123", "label": "Breakup reactions"}
+        self._write_vocab(VOCAB_WITH_PHYSH_TERM)
+
+        issues = validate_vocabulary(self.rag_dir, online_physh=True)
+
+        self.assertEqual(issues, [])
+        query_concept.assert_called_once_with("abc123")
+
+    @patch("physh_mapper.query_concept")
+    def test_online_physh_validation_reports_missing_concept(self, query_concept):
+        query_concept.return_value = None
+        self._write_vocab(VOCAB_WITH_PHYSH_TERM)
+
+        issues = validate_vocabulary(self.rag_dir, online_physh=True)
+
+        self.assertTrue(any("PhySH concept not found" in issue for issue in issues))
+
+    @patch("physh_mapper.query_concept")
+    def test_online_physh_validation_reports_label_mismatch(self, query_concept):
+        query_concept.return_value = {"id": "abc123", "label": "Different PhySH Label"}
+        self._write_vocab(VOCAB_WITH_PHYSH_TERM)
+
+        issues = validate_vocabulary(self.rag_dir, online_physh=True)
+
+        self.assertTrue(any("PhySH label mismatch" in issue for issue in issues))
 
 
 if __name__ == "__main__":

@@ -16,15 +16,25 @@ source:
   venue: null
   abstract: ''
   source_type: pdf_pymupdf
-  primary_evidence: ''
-  original_pdf: ../../reference/pdfs/panReviewBackgroundStudy2024.pdf
+  primary_evidence: reference/parsed/10.1393_ncc_i2024-24369-3.md
+  original_pdf: reference/pdfs/panReviewBackgroundStudy2024.pdf
   original_tex: null
-  source_sha256: ''
-  parser: ''
-  parser_version: ''
-  parsed_at: ''
+  source_sha256: c3861348fa5d3053b5a35900adb2d39b8df5c1ea046c708456955ae5615b6701
+  parser: pymupdf4llm
+  parser_version: 1.27.2.3
+  parsed_at: '2026-05-13'
 edges:
-  research_areas: []
+  research_areas:
+  - canonical_id: physh:024cf552-b967-4a51-8b54-d209e10f0bc7
+    label: Dark matter
+    confidence: 0.9
+    evidence: suggest_vocabulary:panReviewBackgroundStudy2024
+    needs_review: false
+  - canonical_id: physh:4501b22f-36e3-4024-8fe8-7222b02313eb
+    label: Solar neutrinos
+    confidence: 0.9
+    evidence: suggest_vocabulary:panReviewBackgroundStudy2024
+    needs_review: false
   physical_systems: []
   techniques: []
   properties: []
@@ -32,10 +42,10 @@ edges:
   observables: []
   datasets: []
   experiments: []
-chunk_manifest: ''
+chunk_manifest: reference/chunks/10.1393_ncc_i2024-24369-3.jsonl
 quality:
   extraction_confidence: low
-  needs_human_review: true
+  needs_human_review: false
   math_extraction_quality: unknown
   metadata_conflicts: []
 status:

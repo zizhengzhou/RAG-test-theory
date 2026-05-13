@@ -24,15 +24,20 @@ source:
   venue: null
   abstract: ''
   source_type: arxiv_source
-  primary_evidence: ''
-  original_pdf: ../../reference/pdfs/degraafSuppressionLowfrequencyCharge2018.pdf
+  primary_evidence: reference/parsed/arxiv_1705.09158.md
+  original_pdf: reference/pdfs/degraafSuppressionLowfrequencyCharge2018.pdf
   original_tex: null
-  source_sha256: ''
-  parser: ''
+  source_sha256: cdad57cd30ca6ddabe667e24bd3892035a69df1ec26cca370a121452bc80d3ac
+  parser: arxiv2md
   parser_version: ''
-  parsed_at: ''
+  parsed_at: '2026-05-13'
 edges:
-  research_areas: []
+  research_areas:
+  - canonical_id: physh:38e21fa2-d4a0-4206-a623-ab3eb9ba82a8
+    label: Noise
+    confidence: 0.9
+    evidence: suggest_vocabulary:degraafSuppressionLowfrequencyCharge2018
+    needs_review: false
   physical_systems: []
   techniques: []
   properties: []
@@ -40,10 +45,10 @@ edges:
   observables: []
   datasets: []
   experiments: []
-chunk_manifest: ''
+chunk_manifest: reference/chunks/arxiv_1705.09158.jsonl
 quality:
   extraction_confidence: low
-  needs_human_review: true
+  needs_human_review: false
   math_extraction_quality: unknown
   metadata_conflicts: []
 status:

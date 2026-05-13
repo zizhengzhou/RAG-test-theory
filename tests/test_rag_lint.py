@@ -123,6 +123,45 @@ class TestLint(unittest.TestCase):
             issues = check_source_fm(rag_dir, vocab_ids)
             self.assertFalse(any("off-vocab" in i.lower() for i in issues))
 
+    def test_standard_empty_categories_are_not_unknown_when_vocab_subset(self):
+        with tempfile.TemporaryDirectory() as td:
+            rag_dir = Path(td)
+            (rag_dir / "summary" / "sources").mkdir(parents=True)
+            (rag_dir / "vocabulary.md").write_text(
+                "# DARW Vocabulary\n\n```yaml\nterms:\n"
+                "  - canonical_id: \"local:test-method\"\n"
+                "    label: \"Test Method\"\n"
+                "    namespace: \"local\"\n"
+                "    category: \"techniques\"\n"
+                "    aliases: []\n"
+                "    source: \"project\"\n"
+                "    needs_review: true\n"
+                "```\n",
+                encoding="utf-8",
+            )
+            from common import write_frontmatter
+            fm = {
+                "schema_version": "darw-source-v1",
+                "doc_id": "test:1",
+                "citation_key": "test",
+                "edges": {
+                    "research_areas": [],
+                    "physical_systems": [],
+                    "techniques": [{"canonical_id": "local:test-method", "label": "Test Method"}],
+                    "properties": [],
+                    "models": [],
+                    "observables": [],
+                    "datasets": [],
+                    "experiments": [],
+                },
+            }
+            (rag_dir / "summary" / "sources" / "test.md").write_text(write_frontmatter(fm) + "\n# Test\n", encoding="utf-8")
+            vocab_ids = load_vocabulary_canonical_ids(rag_dir)
+
+            issues = check_source_fm(rag_dir, vocab_ids)
+
+            self.assertFalse(any("unknown edge category" in i.lower() for i in issues))
+
     def test_auto_block_mismatch(self):
         with tempfile.TemporaryDirectory() as td:
             rag_dir = Path(td)

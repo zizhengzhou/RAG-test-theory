@@ -8,7 +8,8 @@ import yaml
 from pathlib import Path
 
 from bib_parser import parse_bibtex_file
-from common import read_frontmatter
+from common import read_frontmatter, resolve_rag_path
+from darw_schema import EDGE_CATEGORIES
 
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
@@ -90,9 +91,8 @@ def check_source_fm(rag_dir: Path, vocab_ids: dict[str, set[str]], *, strict: bo
             issues.append(f"missing edges block in {rel}")
             continue
 
-        valid_categories = set(vocab_ids.keys())
         for category, entries in edges.items():
-            if valid_categories and category not in valid_categories:
+            if category not in EDGE_CATEGORIES:
                 issues.append(f"unknown edge category '{category}' in {rel}")
                 continue
             if not isinstance(entries, list):
@@ -120,16 +120,6 @@ def check_source_fm(rag_dir: Path, vocab_ids: dict[str, set[str]], *, strict: bo
     return issues
 
 
-def _resolve_rag_path(rag_dir: Path, page: Path, value: str) -> Path:
-    candidate = Path(value)
-    if candidate.is_absolute():
-        return candidate
-    rag_root_path = (rag_dir / candidate).resolve()
-    if rag_root_path.exists() or value.startswith(("reference/", "summary/", "indexes/")):
-        return rag_root_path
-    return (page.parent / candidate).resolve()
-
-
 def check_pdf_refs(rag_dir: Path) -> list[str]:
     issues: list[str] = []
     sources_dir = rag_dir / "summary" / "sources"
@@ -143,7 +133,7 @@ def check_pdf_refs(rag_dir: Path) -> list[str]:
             if isinstance(source, dict):
                 pdf_ref = source.get("original_pdf", "")
         if pdf_ref:
-            pdf_path = _resolve_rag_path(rag_dir, page, str(pdf_ref))
+            pdf_path = resolve_rag_path(rag_dir, page, str(pdf_ref))
             if not pdf_path.exists():
                 issues.append(f"missing PDF for {page.relative_to(rag_dir)}: {pdf_ref}")
     return issues

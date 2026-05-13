@@ -47,7 +47,7 @@ def _set_evidence_frontmatter(fm: dict[str, object], resolved: ResolvedSource, r
         identifiers["doi"] = resolved.doi or None
     source = fm.setdefault("source", {})
     if isinstance(source, dict):
-        source["source_type"] = resolved.route
+        source["source_type"] = manifest.get("route", resolved.route)
         source["primary_evidence"] = manifest.get("parsed_markdown", "")
         source["original_pdf"] = manifest.get("original_pdf", "")
         source["original_tex"] = manifest.get("original_tex")
@@ -59,7 +59,10 @@ def _set_evidence_frontmatter(fm: dict[str, object], resolved: ResolvedSource, r
     quality = fm.setdefault("quality", {})
     if isinstance(quality, dict):
         quality["needs_human_review"] = bool(resolved.needs_review)
-        quality["metadata_conflicts"] = resolved.metadata_conflicts
+        conflicts = list(resolved.metadata_conflicts)
+        if manifest.get("route") and manifest.get("route") != resolved.route:
+            conflicts.append(f"route fallback: {resolved.route} -> {manifest.get('route')}")
+        quality["metadata_conflicts"] = conflicts
     return fm
 
 
@@ -69,6 +72,7 @@ def ingest_entry(
     *,
     pdf_output: Path | None = None,
     arxiv_output: Path | None = None,
+    fallback_pdf_on_arxiv_fail: bool = False,
     dry_run: bool = False,
 ) -> bool:
     resolved = resolve_entry(entry, rag_dir)
@@ -82,6 +86,7 @@ def ingest_entry(
         rag_dir,
         pdf_output=pdf_output,
         arxiv_output=arxiv_output,
+        fallback_pdf_on_arxiv_fail=fallback_pdf_on_arxiv_fail,
         dry_run=dry_run,
     )
     manifest_path = parsed_manifest_path(rag_dir, resolved.doc_id)
@@ -119,6 +124,11 @@ def main() -> int:
     parser.add_argument("--pdf-output", default="")
     parser.add_argument("--mineru-output", default="", help="Deprecated alias for --pdf-output")
     parser.add_argument("--arxiv-output", default="")
+    parser.add_argument(
+        "--fallback-pdf-on-arxiv-fail",
+        action="store_true",
+        help="If arXiv parsing fails and a local PDF exists, explicitly allow PDF fallback",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -141,6 +151,7 @@ def main() -> int:
                 rag_dir,
                 pdf_output=Path(args.pdf_output or args.mineru_output).resolve() if (args.pdf_output or args.mineru_output) else None,
                 arxiv_output=Path(args.arxiv_output).resolve() if args.arxiv_output else None,
+                fallback_pdf_on_arxiv_fail=args.fallback_pdf_on_arxiv_fail,
                 dry_run=args.dry_run,
             ):
                 ok += 1

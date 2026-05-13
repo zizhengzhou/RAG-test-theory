@@ -20,15 +20,20 @@ source:
   venue: null
   abstract: ''
   source_type: pdf_pymupdf
-  primary_evidence: ''
-  original_pdf: ../../reference/pdfs/dayBroadbandSuperconductingDetector2003.pdf
+  primary_evidence: reference/parsed/10.1038_nature02037.md
+  original_pdf: reference/pdfs/dayBroadbandSuperconductingDetector2003.pdf
   original_tex: null
-  source_sha256: ''
-  parser: ''
-  parser_version: ''
-  parsed_at: ''
+  source_sha256: eec92e7dbe53fc07b71fa0a04b310f5ae129f6b15b3ce8042d0dd304f62c47ce
+  parser: pymupdf4llm
+  parser_version: 1.27.2.3
+  parsed_at: '2026-05-13'
 edges:
-  research_areas: []
+  research_areas:
+  - canonical_id: physh:4df8c87e-3d2c-4f9b-a45e-09913597d30e
+    label: Cooper pairs
+    confidence: 0.9
+    evidence: suggest_vocabulary:dayBroadbandSuperconductingDetector2003
+    needs_review: false
   physical_systems: []
   techniques: []
   properties: []
@@ -36,10 +41,10 @@ edges:
   observables: []
   datasets: []
   experiments: []
-chunk_manifest: ''
+chunk_manifest: reference/chunks/10.1038_nature02037.jsonl
 quality:
   extraction_confidence: low
-  needs_human_review: true
+  needs_human_review: false
   math_extraction_quality: unknown
   metadata_conflicts: []
 status:

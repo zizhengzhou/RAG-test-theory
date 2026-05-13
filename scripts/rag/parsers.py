@@ -352,6 +352,7 @@ def parse_evidence(
     *,
     pdf_output: Path | None = None,
     arxiv_output: Path | None = None,
+    fallback_pdf_on_arxiv_fail: bool = False,
     dry_run: bool = False,
 ) -> ParsedEvidence:
     if resolved.route == ARXIV_SOURCE:
@@ -366,7 +367,30 @@ def parse_evidence(
         if cached is not None:
             content_md = cached
         else:
-            content_md = _run_arxiv2md(resolved.arxiv_id)
+            try:
+                content_md = _run_arxiv2md(resolved.arxiv_id)
+            except EvidenceResolutionError:
+                if not fallback_pdf_on_arxiv_fail:
+                    raise
+                pdf_path = rag_dir / resolved.pdf_path if resolved.pdf_path else None
+                if pdf_path is None or not pdf_path.exists():
+                    raise
+                print(f"  arxiv-source: falling back to local PDF for {resolved.citation_key}", flush=True)
+                fallback = ResolvedSource(
+                    doc_id=resolved.doc_id,
+                    citation_key=resolved.citation_key,
+                    arxiv_id=resolved.arxiv_id,
+                    doi=resolved.doi,
+                    title=resolved.title,
+                    pdf_path=resolved.pdf_path,
+                    route=PDF_PYMUPDF,
+                    needs_review=resolved.needs_review,
+                    metadata_conflicts=resolved.metadata_conflicts + ["arxiv_source_failed; used local PDF fallback"],
+                )
+                parser_version = _get_pymupdf4llm_version()
+                content_md = _run_pdf_to_md(pdf_path, fallback)
+                source_hash = sha256_file(pdf_path)
+                return _save_parsed_content(fallback, rag_dir, content_md, "pymupdf4llm", parser_version, source_hash, dry_run)
             _save_arxiv_cache(rag_dir, resolved.arxiv_id, parser_version, content_md, dry_run=dry_run)
         source_hash = hashlib.sha256(content_md.encode("utf-8")).hexdigest()
         if resolved.pdf_path:
@@ -400,6 +424,11 @@ def main() -> int:
     parser.add_argument("--mineru-output", default="", help="Deprecated alias for --pdf-output")
     parser.add_argument("--arxiv-output", default="")
     parser.add_argument("--parser-version", default="")
+    parser.add_argument(
+        "--fallback-pdf-on-arxiv-fail",
+        action="store_true",
+        help="If arXiv parsing fails and a local PDF exists, explicitly allow PDF fallback",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -414,6 +443,7 @@ def main() -> int:
             rag_dir,
             pdf_output=Path(args.pdf_output or args.mineru_output).resolve() if (args.pdf_output or args.mineru_output) else None,
             arxiv_output=Path(args.arxiv_output).resolve() if args.arxiv_output else None,
+            fallback_pdf_on_arxiv_fail=args.fallback_pdf_on_arxiv_fail,
             dry_run=args.dry_run,
         )
     except EvidenceResolutionError as exc:

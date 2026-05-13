@@ -17,7 +17,9 @@ As a library::
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
+import re
 import time
 import urllib.request
 import urllib.error
@@ -104,6 +106,103 @@ def _cache_concept(cache: dict[str, dict[str, Any]], concept: dict[str, Any]) ->
             cache.setdefault("__by_label__", {})[label] = str(cid)
 
 
+def _cached_search_concepts(query: str, cache: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return PhySH search results, caching both query order and concepts."""
+    key = query.strip().lower()
+    query_cache: dict[str, list[str]] = cache.setdefault("__search__", {})  # type: ignore[assignment]
+    if key in query_cache:
+        return [cache[cid] for cid in query_cache[key] if cid in cache]
+    results = search_concepts(query)
+    ids: list[str] = []
+    for result in results:
+        cid = str(result.get("id") or result.get("uuid") or result.get("concept_id", ""))
+        if not cid:
+            continue
+        _cache_concept(cache, result)
+        ids.append(cid)
+    query_cache[key] = ids
+    return [cache[cid] for cid in ids if cid in cache]
+
+
+def _normal_label(text: str) -> str:
+    return " ".join(_label_tokens(text))
+
+
+def _label_tokens(text: str) -> list[str]:
+    tokens: list[str] = []
+    for raw in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(raw) > 3 and raw.endswith("s"):
+            raw = raw[:-1]
+        tokens.append(raw)
+    return tokens
+
+
+def _has_conflict(query_tokens: set[str], label_tokens: set[str]) -> bool:
+    conflicts = [
+        ("elastic", "inelastic"),
+        ("coherent", "incoherent"),
+        ("bound", "unbound"),
+        ("linear", "nonlinear"),
+    ]
+    for positive, negative in conflicts:
+        if positive in query_tokens and negative in label_tokens and positive not in label_tokens:
+            return True
+        if negative in query_tokens and positive in label_tokens and negative not in label_tokens:
+            return True
+    return False
+
+
+def _candidate_match_score(raw_term: str, label: str) -> float:
+    """Score whether a PhySH label is safe to accept for a raw term.
+
+    Search ordering is not reliable enough: for example, PhySH may return
+    "Deep inelastic scattering" before "Elastic scattering reactions" for
+    the query "elastic scattering".  This score accepts exact labels and
+    high-overlap phrase extensions, while rejecting single-word expansions
+    and antonym-like mismatches.
+    """
+    query_norm = _normal_label(raw_term)
+    label_norm = _normal_label(label)
+    if not query_norm or not label_norm:
+        return 0.0
+    if query_norm == label_norm:
+        return 1.0
+
+    query_tokens = set(query_norm.split())
+    candidate_tokens = set(label_norm.split())
+    if len(query_tokens) < 2:
+        return 0.0
+    if _has_conflict(query_tokens, candidate_tokens):
+        return 0.0
+
+    overlap = query_tokens & candidate_tokens
+    if not overlap:
+        return 0.0
+    recall = len(overlap) / len(query_tokens)
+    precision = len(overlap) / len(candidate_tokens)
+    sequence = difflib.SequenceMatcher(None, query_norm, label_norm).ratio()
+    score = (0.65 * recall) + (0.25 * precision) + (0.10 * sequence)
+    if label_norm.startswith(query_norm) or query_norm.startswith(label_norm):
+        score += 0.04
+    elif query_tokens.issubset(candidate_tokens):
+        # Extra leading qualifiers often change the observable/model meaning
+        # ("cross section" -> "total cross sections").  Keep these for review.
+        score -= 0.12
+    return min(score, 0.99)
+
+
+def _best_physh_candidate(raw_term: str, results: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, float]:
+    best: dict[str, Any] | None = None
+    best_score = 0.0
+    for result in results:
+        label = str(result.get("label") or "")
+        score = _candidate_match_score(raw_term, label)
+        if score > best_score:
+            best = result
+            best_score = score
+    return best, best_score
+
+
 # ── Vocabulary helpers ───────────────────────────────────────────────────────
 
 
@@ -153,6 +252,8 @@ class NormalizedEntity:
     needs_review: bool = False
     physh_uuid: str | None = None
     matched_alias: str | None = None
+    match_score: float = 0.0
+    match_type: str = ""
 
 
 def resolve_term(
@@ -202,44 +303,54 @@ def resolve_term(
             concept = cache.get(physh_id)
 
         if concept is None:
-            # Search PhySH API directly
-            results = search_concepts(raw)
+            # Search PhySH API directly.  PhySH result ordering is useful for
+            # recall but not reliable enough for automatic acceptance, so we
+            # re-rank returned concepts with a local safety score.
+            results = _cached_search_concepts(raw, cache)
+            match_score = 0.0
+            match_type = ""
             for result in results:
-                _cache_concept(cache, result)
                 result_label = (result.get("label") or "").strip().lower()
                 if result_label == key:
                     concept = result
                     physh_id = concept.get("id") or concept.get("uuid", "")
+                    match_score = 1.0
+                    match_type = "exact"
                     break
-                # exact match not found yet, store best candidate
-                if concept is None:
-                    concept = result
+
+            if concept is None:
+                concept, score = _best_physh_candidate(raw, results)
+                if concept is not None and score >= 0.84:
                     physh_id = concept.get("id") or concept.get("uuid", "")
+                    match_score = score
+                    match_type = "semantic"
 
             # If still no exact match, try individual word tokens
-            if concept is None or (concept.get("label") or "").strip().lower() != key:
+            if concept is None:
                 tokens = key.split()
                 if len(tokens) > 1:
+                    token_results: list[dict[str, Any]] = []
                     for token in tokens:
                         if len(token) < 3:
                             continue
-                        token_results = search_concepts(token)
-                        for result in token_results:
-                            _cache_concept(cache, result)
-                            result_label = (result.get("label") or "").strip().lower()
-                            if result_label == key:
-                                concept = result
-                                physh_id = concept.get("id") or concept.get("uuid", "")
-                                break
-                        if concept is not None and (concept.get("label") or "").strip().lower() == key:
-                            break
+                        token_results.extend(_cached_search_concepts(token, cache))
+                    concept, score = _best_physh_candidate(raw, token_results)
+                    if concept is not None and score >= 0.84:
+                        physh_id = concept.get("id") or concept.get("uuid", "")
+                        match_score = score
+                        match_type = "semantic"
+                    else:
+                        concept = None
 
             if cache_dir is not None:
                 _save_physh_cache(cache_dir, cache)
+        else:
+            match_score = 1.0
+            match_type = "exact"
 
         if physh_id and concept:
             # Fetch full concept details (search results may lack facets)
-            full = query_concept(physh_id)
+            full = None if concept.get("facets") else query_concept(physh_id)
             if full:
                 concept = full
                 _cache_concept(cache, full)
@@ -257,8 +368,10 @@ def resolve_term(
                 namespace="physh",
                 category=_map_physh_facet_to_category(facet_name),
                 source="physh_api",
-                needs_review=False,
+                needs_review=match_type != "exact",
                 physh_uuid=physh_id,
+                match_score=match_score,
+                match_type=match_type,
             )
 
     # 3. Unresolved → local placeholder

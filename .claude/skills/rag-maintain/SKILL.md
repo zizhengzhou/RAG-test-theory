@@ -33,26 +33,19 @@ python scripts/rag/search_add.py add --rag-dir RAG --query "arxiv:2603.24450" --
 Always run dry-run first and show the user every planned change:
 
 ```bash
-python scripts/rag/maintain.py remove --rag-dir RAG --key citationKey --dry-run
+python scripts/rag/delete_entry.py --rag-dir RAG --key citationKey --dry-run
+python scripts/rag/delete_entry.py --rag-dir RAG --doi 10.xxxx/yyyy --dry-run
+python scripts/rag/delete_entry.py --rag-dir RAG --arxiv 2603.24450 --dry-run
 ```
 
 After explicit user confirmation, run:
 
 ```bash
-python scripts/rag/maintain.py remove --rag-dir RAG --key citationKey --yes
+python scripts/rag/delete_entry.py --rag-dir RAG --key citationKey --yes
 python scripts/rag/rag_lint.py --rag-dir RAG
 ```
 
-The command removes the BibTeX entry, local source page, and matching local PDF, then rebuilds generated dimension indexes. It reports synthesis pages for manual review but does not delete them.
-
-**For entries with generated evidence, use `evidence-remove` instead** (see `rag-evidence` skill):
-
-```bash
-python scripts/rag/remove_evidence.py --rag-dir RAG --key citationKey --dry-run
-python scripts/rag/remove_evidence.py --rag-dir RAG --key citationKey --yes
-```
-
-This also cleans parsed Markdown, manifests, chunk JSONL, and scrubs stale evidence links from source pages.
+The unified command removes the BibTeX entry, source page, PDF, parsed Markdown, parsed manifest, chunk JSONL, arXiv cache artifacts, and rebuilds generated indexes where possible. It reports manual Markdown references for review.
 
 Never remove user files directly without confirmation.
 

@@ -74,15 +74,20 @@ source:
   venue: null
   abstract: ''
   source_type: pdf_pymupdf
-  primary_evidence: ''
-  original_pdf: ../../reference/pdfs/kinastImprovingQualityCaWO42022.pdf
+  primary_evidence: reference/parsed/10.1007_s10909-022-02743-7.md
+  original_pdf: reference/pdfs/kinastImprovingQualityCaWO42022.pdf
   original_tex: null
-  source_sha256: ''
-  parser: ''
-  parser_version: ''
-  parsed_at: ''
+  source_sha256: 58f359f1268d91ab85ab0f41bc5fa11b5621f1799fd0c850c02579159e640ced
+  parser: pymupdf4llm
+  parser_version: 1.27.2.3
+  parsed_at: '2026-05-13'
 edges:
-  research_areas: []
+  research_areas:
+  - canonical_id: physh:024cf552-b967-4a51-8b54-d209e10f0bc7
+    label: Dark matter
+    confidence: 0.9
+    evidence: suggest_vocabulary:kinastImprovingQualityCaWO42022
+    needs_review: false
   physical_systems: []
   techniques: []
   properties: []
@@ -90,10 +95,10 @@ edges:
   observables: []
   datasets: []
   experiments: []
-chunk_manifest: ''
+chunk_manifest: reference/chunks/10.1007_s10909-022-02743-7.jsonl
 quality:
   extraction_confidence: low
-  needs_human_review: true
+  needs_human_review: false
   math_extraction_quality: unknown
   metadata_conflicts: []
 status:

@@ -56,6 +56,8 @@ def normalize_term(term: str, rag_dir: Path, *, online: bool = True) -> dict:
         confidence = 0.0
     elif entity.source == "local_cache":
         confidence = 0.9
+    elif entity.source == "physh_api" and entity.match_score:
+        confidence = entity.match_score
     else:
         confidence = 1.0
 

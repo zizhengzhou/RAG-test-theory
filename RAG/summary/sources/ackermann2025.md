@@ -15,17 +15,27 @@ source:
   year: '2025'
   venue: null
   abstract: ''
-  source_type: arxiv_source
+  source_type: pdf_pymupdf
   primary_evidence: reference/parsed/arxiv_2501.05206.md
   original_pdf: reference/pdfs/ackermann2025.pdf
   original_tex: null
   source_sha256: c0777923089f296c956085b88d0625c3f5a0c0b4980a1816d50d75901b788ebf
-  parser: arxiv2md
-  parser_version: 0.1.1
-  parsed_at: '2026-05-12'
+  parser: pymupdf4llm
+  parser_version: 1.27.2.3
+  parsed_at: '2026-05-13'
 edges:
-  research_areas: []
-  physical_systems: []
+  research_areas:
+  - canonical_id: physh:d9e32a6d-d42e-430a-9665-10aaf0776e26
+    label: Nuclear reactors
+    confidence: 0.9
+    evidence: suggest_vocabulary:ackermann2025
+    needs_review: false
+  physical_systems:
+  - canonical_id: physh:db3d74af-cef8-4eeb-a6da-910a42929da6
+    label: Neutrinos
+    confidence: 0.9
+    evidence: suggest_vocabulary:ackermann2025
+    needs_review: false
   techniques: []
   properties: []
   models: []
@@ -37,7 +47,8 @@ quality:
   extraction_confidence: low
   needs_human_review: false
   math_extraction_quality: unknown
-  metadata_conflicts: []
+  metadata_conflicts:
+  - 'route fallback: arxiv_source -> pdf_pymupdf'
 status:
   reading_status: unread
   relevance: unknown

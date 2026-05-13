@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "arxiv:2604.12572",
+  "citation_key": "yu2026",
+  "route": "pdf_pymupdf",
+  "arxiv_id": "2604.12572",
+  "doi": "",
+  "parser": "pymupdf4llm",
+  "parser_version": "1.27.2.3",
+  "source_sha256": "ad2b5b6daee9bfa79c14f62288f27f79ff554abadd40d63b56d7b1e190b4ab00",
+  "parsed_markdown": "reference/parsed/arxiv_2604.12572.md",
+  "original_pdf": "reference/pdfs/yu2026.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-13"
+}

@@ -34,8 +34,19 @@ Use this after import/ingest or when the user requests a better source page.
 
 ### query
 
-1. Read `/RAG/index.md`.
-2. Drill into relevant `/RAG/summary/<dimension>/` pages and `/RAG/summary/sources/` pages.
+1. Build a structured context pack first:
+
+```bash
+python scripts/rag/context_pack.py --rag-dir RAG --query "question" --top-k 8 --json
+python scripts/rag/context_pack.py --rag-dir RAG --key citationKey --json
+```
+
+2. If chunk evidence is sparse, use structured local fallback:
+
+```bash
+python scripts/rag/query.py --rag-dir RAG --query "title DOI arXiv or key" --json
+```
+
 3. Answer with provenance links and distinguish supported claims, contradictions, and gaps.
 4. If the synthesis is reusable, offer to save it under `/RAG/summary/synthesis/`.
 
@@ -69,10 +80,11 @@ python scripts/rag/export.py search --rag-dir RAG --query "paper description" --
 python scripts/rag/export.py get-bibtex --rag-dir RAG --query "arxiv:2603.24450" --provider inspire
 ```
 
-Use local RAG search to identify known project papers, then INSPIRE to verify the canonical record. If INSPIRE has no matching record and the user accepts local fallback, use:
+Use local RAG search to identify known project papers, then INSPIRE to verify the canonical record. `get-bibtex` falls back to local BibTeX by default when INSPIRE has no matching record; use strict mode when fallback is not acceptable:
 
 ```bash
-python scripts/rag/export.py get-bibtex --rag-dir RAG --key citationKey --provider inspire --fallback-local
+python scripts/rag/export.py get-bibtex --rag-dir RAG --key citationKey --provider inspire --json
+python scripts/rag/export.py get-bibtex --rag-dir RAG --key citationKey --strict-provider inspire
 ```
 
 Do not edit paper-writing files; a writing skill should consume the returned BibTeX or citation key.

@@ -36,7 +36,70 @@ Do not hardcode physics terms in scripts.
 ## Terms
 
 ```yaml
-terms: []
+terms:
+- canonical_id: physh:d9e32a6d-d42e-430a-9665-10aaf0776e26
+  label: Nuclear reactors
+  namespace: physh
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:db3d74af-cef8-4eeb-a6da-910a42929da6
+  label: Neutrinos
+  namespace: physh
+  category: physical_systems
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:8568a1b2-908f-465b-9013-9f8ec543070c
+  label: Magnetic moment
+  namespace: physh
+  category: properties
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:4df8c87e-3d2c-4f9b-a45e-09913597d30e
+  label: Cooper pairs
+  namespace: physh
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:38e21fa2-d4a0-4206-a623-ab3eb9ba82a8
+  label: Noise
+  namespace: physh
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:024cf552-b967-4a51-8b54-d209e10f0bc7
+  label: Dark matter
+  namespace: physh
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
+- canonical_id: physh:4501b22f-36e3-4024-8fe8-7222b02313eb
+  label: Solar neutrinos
+  namespace: physh
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: physh
+  needs_review: false
 ```
 
 ---

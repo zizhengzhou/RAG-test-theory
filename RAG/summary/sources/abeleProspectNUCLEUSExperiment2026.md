@@ -92,7 +92,12 @@ edges:
   research_areas: []
   physical_systems: []
   techniques: []
-  properties: []
+  properties:
+  - canonical_id: physh:8568a1b2-908f-465b-9013-9f8ec543070c
+    label: Magnetic moment
+    confidence: 0.9
+    evidence: suggest_vocabulary:abeleProspectNUCLEUSExperiment2026
+    needs_review: false
   models: []
   observables: []
   datasets: []

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -225,17 +226,34 @@ def command_search(args: argparse.Namespace) -> int:
     return 0
 
 
-def _bibtex_for_candidate(candidate: LocalCandidate, provider: str, fallback_local: bool) -> str:
+def _bibtex_for_candidate_with_metadata(candidate: LocalCandidate, provider: str, fallback_local: bool) -> tuple[str, dict[str, object]]:
+    metadata: dict[str, object] = {
+        "provider_requested": provider,
+        "provider_used": "local",
+        "fallback_used": False,
+        "citation_key": candidate.key,
+        "doi": candidate.doi,
+        "arxiv": candidate.arxiv,
+        "source_page": str(candidate.source_path) if candidate.source_path else "",
+        "record_id": "",
+    }
     if provider == "inspire":
         query = _inspire_query_for_candidate(candidate)
         results = _inspire_results_for_candidate(candidate, 1)
         if results:
             bibtex = fetch_inspire_bibtex(results[0].record_id)
             if bibtex:
-                return bibtex
+                metadata["provider_used"] = "inspire"
+                metadata["record_id"] = results[0].record_id
+                return bibtex, metadata
         if not fallback_local:
             raise RuntimeError(f"INSPIRE BibTeX not found for {candidate.key} ({query})")
-    return render_bibtex(candidate.entry)
+        metadata["fallback_used"] = True
+    return render_bibtex(candidate.entry), metadata
+
+
+def _bibtex_for_candidate(candidate: LocalCandidate, provider: str, fallback_local: bool) -> str:
+    return _bibtex_for_candidate_with_metadata(candidate, provider, fallback_local)[0]
 
 
 def _write_or_print(text: str, out: str) -> None:
@@ -266,7 +284,10 @@ def command_get_bibtex(args: argparse.Namespace) -> int:
             for i, candidate in enumerate(candidates, 1):
                 print(f"[{i}] {candidate.key} score={candidate.score} {candidate.title} ({candidate.year})")
             return 0
-        text = _bibtex_for_candidate(candidates[0], args.provider, args.fallback_local)
+        text, metadata = _bibtex_for_candidate_with_metadata(candidates[0], args.provider, args.fallback_local)
+        if getattr(args, "json", False):
+            print(json.dumps({"metadata": metadata, "bibtex": text}, indent=2, ensure_ascii=False))
+            return 0
         print(text)
         return 0
     if args.provider == "inspire" and queries:
@@ -332,6 +353,7 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--key", action="append", default=[])
     parser.add_argument("--tag", action="append", default=[])
     parser.add_argument("--provider", choices=["inspire", "local"], default="inspire")
+    parser.add_argument("--strict-provider", choices=["inspire", "local"], default="")
     parser.add_argument("--limit", type=int, default=5)
 
 
@@ -346,6 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
     get_parser = subparsers.add_parser("get-bibtex")
     _add_common(get_parser)
     get_parser.add_argument("--fallback-local", action="store_true")
+    get_parser.add_argument("--json", action="store_true")
     get_parser.add_argument("--format", choices=["bibtex", "candidates"], default="bibtex")
     get_parser.set_defaults(func=command_get_bibtex)
 
@@ -365,6 +388,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+    if getattr(args, "strict_provider", ""):
+        args.provider = args.strict_provider
+        if hasattr(args, "fallback_local"):
+            args.fallback_local = False
+    elif getattr(args, "provider", "") == "inspire" and hasattr(args, "fallback_local"):
+        args.fallback_local = True
     try:
         return args.func(args)
     except ValueError as exc:

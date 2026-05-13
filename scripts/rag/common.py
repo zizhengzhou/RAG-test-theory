@@ -21,6 +21,16 @@ def _display_path(path: Path, base_dir: Path) -> str:
             return path.as_posix()
 
 
+def resolve_rag_path(rag_dir: Path, page: Path, value: str) -> Path:
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return candidate
+    rag_root_path = (rag_dir / candidate).resolve()
+    if rag_root_path.exists() or value.startswith(("reference/", "summary/", "indexes/")):
+        return rag_root_path
+    return (page.parent / candidate).resolve()
+
+
 def ensure_rag_dirs(rag_dir: Path, dimensions: Iterable[str] = ()) -> None:
     rag_dir.mkdir(parents=True, exist_ok=True)
     (rag_dir / "summary" / "sources").mkdir(parents=True, exist_ok=True)

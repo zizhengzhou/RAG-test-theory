@@ -1,6 +1,7 @@
 """Tests for DARW source page validation."""
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -265,6 +266,27 @@ confidence: "high"
         self._write_source("paper", fm)
         issues = validate_source_pages(self.rag_dir, strict=True)
         self.assertTrue(any("error" in i.lower() and "no edges" in i.lower() for i in issues))
+
+    def test_cli_non_strict_warning_returns_zero(self):
+        fm = dict(BASE_FM)
+        fm["edges"] = dict(ALL_EDGES)
+        self._write_source("paper", fm)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).resolve().parents[1] / "scripts" / "rag" / "validate_source_pages.py"),
+                "--rag-dir",
+                str(self.rag_dir),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("[warning]", result.stdout)
 
 
 if __name__ == "__main__":

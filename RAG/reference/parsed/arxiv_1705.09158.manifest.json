@@ -1,0 +1,15 @@
+{
+  "schema_version": "darw-parsed-evidence-v1",
+  "doc_id": "arxiv:1705.09158",
+  "citation_key": "degraafSuppressionLowfrequencyCharge2018",
+  "route": "arxiv_source",
+  "arxiv_id": "1705.09158",
+  "doi": "10.1038/s41467-018-03577-2",
+  "parser": "arxiv2md",
+  "parser_version": "",
+  "source_sha256": "cdad57cd30ca6ddabe667e24bd3892035a69df1ec26cca370a121452bc80d3ac",
+  "parsed_markdown": "reference/parsed/arxiv_1705.09158.md",
+  "original_pdf": "reference/pdfs/degraafSuppressionLowfrequencyCharge2018.pdf",
+  "original_tex": null,
+  "created_at": "2026-05-13"
+}

@@ -19,6 +19,16 @@ The assistant should ask using a paper list grouped by title/citation key, allow
 
 ## import-bib
 
+Prefer the unified import pipeline for normal imports:
+
+```bash
+python scripts/rag/import_pipeline.py --rag-dir RAG --bib path/to/file.bib --dry-run
+python scripts/rag/import_pipeline.py --rag-dir RAG --bib path/to/file.bib --enrich-inspire --dry-run
+python scripts/rag/import_pipeline.py --rag-dir RAG --bib path/to/file.bib --yes
+```
+
+Use the lower-level commands below only for debugging a specific stage.
+
 1. Parse the input BibTeX file.
 2. Normalize DOI, arXiv ID, title, authors, and citation key.
 3. Deduplicate against `/RAG/references.bib` by DOI, arXiv, normalized title, then author/year.
@@ -39,6 +49,13 @@ python scripts/rag/import_bib.py --bib path/to/file.bib --rag-dir RAG
 
 ## import-zip
 
+Prefer:
+
+```bash
+python scripts/rag/import_pipeline.py --rag-dir RAG --zip path/to/zotero.zip --dry-run
+python scripts/rag/import_pipeline.py --rag-dir RAG --zip path/to/zotero.zip --yes
+```
+
 For Zotero RDF exports:
 
 1. Unzip to a temporary directory.
@@ -58,6 +75,13 @@ python scripts/rag/zip_importer.py --zip path/to/zotero.zip --rag-dir RAG --dry-
 ```
 
 ## search-and-add
+
+Prefer:
+
+```bash
+python scripts/rag/import_pipeline.py --rag-dir RAG --query "paper description" --limit 5 --dry-run
+python scripts/rag/import_pipeline.py --rag-dir RAG --record-id INSPIRE_ID --yes
+```
 
 Search is AI-orchestrated but script-executed:
 
