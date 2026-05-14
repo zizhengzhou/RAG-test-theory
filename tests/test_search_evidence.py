@@ -30,7 +30,11 @@ class TestSearchEvidence(unittest.TestCase):
         (self.rag_dir / "references.bib").write_text(render_bibtex(entry), encoding="utf-8")
         self.parsed = self.tmp / "parsed.md"
         self.parsed.write_text(
-            "# Intro\n\nSuperconducting resonators exhibit TLS noise.\n\n# Method\n\nWe measured frequency noise in NbN resonators.\n",
+            (
+                "# Intro\n\nSuperconducting resonators exhibit TLS noise.\n\n"
+                "# Method\n\nWe measured frequency noise in NbN resonators.\n\n"
+                "# References\n\nDark matter axion detection appears only in this bibliography entry.\n"
+            ),
             encoding="utf-8",
         )
         ingest_entry(entry, self.rag_dir, arxiv_output=self.parsed)
@@ -51,7 +55,13 @@ class TestSearchEvidence(unittest.TestCase):
 
     def test_search_irrelevant_query_returns_empty(self):
         hits = search_chunks(self.rag_dir, "dark matter axion detection")
-        self.assertTrue(len(hits) == 0 or all(h.score < 0.1 for h in hits))
+        self.assertEqual(hits, [])
+
+    def test_low_quality_sections_are_optional(self):
+        hits = search_chunks(self.rag_dir, "dark matter axion detection", include_low_quality=True)
+
+        self.assertTrue(hits)
+        self.assertEqual(hits[0].section_type, "references")
 
     def test_hit_contains_provenance_fields(self):
         hits = search_chunks(self.rag_dir, "superconducting")
@@ -62,6 +72,7 @@ class TestSearchEvidence(unittest.TestCase):
         self.assertEqual(hit.citation_key, "paper")
         self.assertIn("summary/sources/paper.md", hit.source_page)
         self.assertEqual(hit.route, "arxiv_source")
+        self.assertTrue(hit.section_type)
 
     def test_format_hits_includes_chunk_id_and_text(self):
         hits = search_chunks(self.rag_dir, "TLS noise")

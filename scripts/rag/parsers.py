@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import time
-import tempfile
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -24,6 +23,7 @@ from darw_schema import (
     parsed_markdown_path,
 )
 from resolve_source import ResolvedSource, resolve_key
+from temp_paths import local_temp_dir
 
 
 class EvidenceResolutionError(RuntimeError):
@@ -109,8 +109,7 @@ def _run_pandoc_fallback(arxiv_id: str, paper) -> str:
     import subprocess
     import tarfile
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        dpath = Path(tmpdir)
+    with local_temp_dir("rag_arxiv_source_") as dpath:
         print(f"  arxiv-source: downloading source tarball...", flush=True)
         fpath_source = paper.download_source(dirpath=str(dpath), download_domain="arxiv.org")
         time.sleep(1.0)

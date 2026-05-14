@@ -28,6 +28,7 @@ class ChunkRecord:
     source_sha256: str
     section_title: str
     section_anchor: str
+    section_type: str
     chunk_index: int
     text: str
     contains_equation: bool
@@ -45,6 +46,57 @@ def stable_anchor(title: str) -> str:
     clean = re.sub(r"[^\w\s-]", "", clean, flags=re.UNICODE)
     clean = re.sub(r"\s+", "-", clean).strip("-")
     return f"#{clean or 'section'}"
+
+
+def classify_section_type(title: str, text: str = "") -> str:
+    """Classify a Markdown section for retrieval ranking and filtering."""
+    stripped = text.lstrip()
+    if stripped.startswith("---") and ("doc_id:" in stripped[:500] or "citation_key:" in stripped[:500]):
+        return "metadata"
+    haystack = " ".join([title, text[:500]]).strip().lower()
+    if not haystack:
+        return "body"
+
+    reference_markers = (
+        "references",
+        "bibliography",
+        "works cited",
+        "literature cited",
+    )
+    metadata_markers = (
+        "online content",
+        "publisher",
+        "acknowledg",
+        "author contribution",
+        "competing interest",
+        "data availability",
+        "code availability",
+        "supplementary information",
+        "peer review",
+        "reporting summary",
+    )
+    if any(marker in haystack for marker in reference_markers):
+        return "references"
+    reference_like_lines = re.findall(r"(?m)^\s*(?:\[\d+\]|\d+\.)\s+\S+", text[:2000])
+    if len(reference_like_lines) >= 3:
+        return "references"
+    if any(marker in haystack for marker in metadata_markers):
+        return "metadata"
+    if "appendix" in haystack or "supplement" in haystack:
+        return "appendix"
+    if "abstract" in haystack:
+        return "abstract"
+    if "introduction" in haystack or haystack.startswith("intro"):
+        return "introduction"
+    if any(marker in haystack for marker in ("method", "experimental setup", "materials")):
+        return "methods"
+    if any(marker in haystack for marker in ("result", "finding", "measurement", "observation")):
+        return "results"
+    if "discussion" in haystack:
+        return "discussion"
+    if any(marker in haystack for marker in ("conclusion", "summary", "outlook")):
+        return "conclusion"
+    return "body"
 
 
 def _sections(text: str) -> list[tuple[str, str, int, int]]:
@@ -121,6 +173,7 @@ def build_chunks(manifest: dict[str, Any], parsed_text: str, *, max_chars: int =
                     source_sha256=str(manifest.get("source_sha256", "")),
                     section_title=title,
                     section_anchor=anchor,
+                    section_type=classify_section_type(title, chunk_text),
                     chunk_index=index,
                     text=chunk_text,
                     contains_equation=bool(eq_ids),

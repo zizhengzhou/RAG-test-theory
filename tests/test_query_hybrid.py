@@ -40,9 +40,10 @@ class TestQueryHybrid(unittest.TestCase):
     def test_query_hybrid_returns_chunk_candidates(self):
         result = query_hybrid(self.rag_dir, "TLS noise")
 
-        self.assertEqual(result["retrieval"]["mode"], "tfidf-fallback")
+        self.assertEqual(result["retrieval"]["mode"], "lexical-bm25-section-rerank")
         self.assertTrue(result["answer_candidates"])
         self.assertTrue(result["answer_candidates"][0]["chunk_id"])
+        self.assertTrue(result["answer_candidates"][0]["section_type"])
 
 
 if __name__ == "__main__":

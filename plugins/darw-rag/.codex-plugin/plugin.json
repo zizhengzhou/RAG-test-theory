@@ -1,0 +1,42 @@
+{
+  "name": "darw-rag",
+  "version": "0.1.0",
+  "description": "Evidence-first Markdown RAG workflow for research repositories.",
+  "author": {
+    "name": "DARW RAG contributors",
+    "email": "zizhengzhou@users.noreply.github.com",
+    "url": "https://github.com/zizhengzhou/RAG-test-theory"
+  },
+  "homepage": "https://github.com/zizhengzhou/RAG-test-theory",
+  "repository": "https://github.com/zizhengzhou/RAG-test-theory.git",
+  "license": "MIT",
+  "keywords": [
+    "rag",
+    "research",
+    "bibtex",
+    "zotero",
+    "evidence"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DARW RAG",
+    "shortDescription": "Bootstrap and query evidence-first research RAGs.",
+    "longDescription": "Initialize a Markdown-first RAG, import BibTeX or Zotero ZIP exports, build chunk-level evidence, and expose compact read-only retrieval for research agents.",
+    "developerName": "DARW RAG contributors",
+    "category": "Research",
+    "capabilities": [
+      "Research",
+      "Files",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/zizhengzhou/RAG-test-theory",
+    "privacyPolicyURL": "https://github.com/zizhengzhou/RAG-test-theory",
+    "termsOfServiceURL": "https://github.com/zizhengzhou/RAG-test-theory",
+    "defaultPrompt": [
+      "Bootstrap RAG from this Zotero ZIP.",
+      "Import this BibTeX into DARW RAG.",
+      "Search RAG for evidence on this claim."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

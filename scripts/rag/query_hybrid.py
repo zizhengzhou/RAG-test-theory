@@ -19,8 +19,10 @@ def query_hybrid(rag_dir: Path, query: str, *, top_k: int = 8) -> dict[str, Any]
             "citation_key": hit.citation_key,
             "doc_id": hit.doc_id,
             "score": hit.score,
+            "raw_score": hit.raw_score,
             "source_page": hit.source_page,
             "section_anchor": hit.section_anchor,
+            "section_type": hit.section_type,
         }
         for hit in hits
     ]
@@ -34,7 +36,7 @@ def query_hybrid(rag_dir: Path, query: str, *, top_k: int = 8) -> dict[str, Any]
         "answer_candidates": candidates,
         "evidence": pack.get("evidence_chunks", []),
         "gaps": gaps,
-        "retrieval": {"mode": "tfidf-fallback", "top_k": top_k},
+        "retrieval": {"mode": "lexical-bm25-section-rerank", "top_k": top_k},
     }
 
 

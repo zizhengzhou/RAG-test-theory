@@ -16,6 +16,16 @@ $env:PYTHONIOENCODING = "utf-8"
 
 ## Quick start
 
+### 0. Verify plugin-style deployment
+
+After cloning the repository, run the smoke test to verify plugin discovery
+metadata, bootstrap import, evidence chunking, compact research context, and
+chunk tracing without network access:
+
+```bash
+python scripts/rag/plugin_smoke_test.py --json
+```
+
 ### 1. Initialize a project-specific RAG
 
 ```bash

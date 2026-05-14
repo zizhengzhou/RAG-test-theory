@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
 
-from chunker import build_chunks, stable_anchor
+from chunker import build_chunks, classify_section_type, stable_anchor
 
 
 class TestChunker(unittest.TestCase):
@@ -34,6 +34,19 @@ class TestChunker(unittest.TestCase):
         text = "# Intro\n\nEvidence text.\n"
         chunks = build_chunks(manifest, text)
         self.assertEqual(text[chunks[0].char_start:chunks[0].char_end].strip(), chunks[0].text)
+
+    def test_section_type_classification(self):
+        self.assertEqual(classify_section_type("References"), "references")
+        self.assertEqual(classify_section_type("Online content"), "metadata")
+        self.assertEqual(classify_section_type("Results"), "results")
+        self.assertEqual(
+            classify_section_type(
+                "Parsed PDF text",
+                "[1] First reference.\n[2] Second reference.\n[3] Third reference.\n",
+            ),
+            "references",
+        )
+        self.assertEqual(classify_section_type("Document", "---\ndoc_id: paper\ncitation_key: paper\n---"), "metadata")
 
 
 if __name__ == "__main__":

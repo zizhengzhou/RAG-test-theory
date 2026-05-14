@@ -58,8 +58,8 @@ class TestContextPack(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_query_pack_contains_chunks_source_and_bibtex(self):
-        pack = build_context_pack(self.rag_dir, query="TLS noise superconducting", top_k=3)
+    def test_full_query_pack_contains_chunks_source_and_bibtex(self):
+        pack = build_context_pack(self.rag_dir, query="TLS noise superconducting", top_k=3, profile="full")
 
         self.assertEqual(pack["query"], "TLS noise superconducting")
         self.assertTrue(pack["evidence_chunks"])
@@ -67,8 +67,27 @@ class TestContextPack(unittest.TestCase):
         self.assertTrue(pack["source_pages"])
         self.assertIn("@article{paper", pack["bib_entries"][0]["bibtex"])
 
+    def test_compact_query_pack_omits_full_body_and_bibtex(self):
+        pack = build_context_pack(self.rag_dir, query="TLS noise superconducting", top_k=3)
+
+        self.assertEqual(pack["provenance"]["profile"], "compact")
+        self.assertTrue(pack["evidence_chunks"])
+        self.assertIn("section_type", pack["evidence_chunks"][0])
+        self.assertLessEqual(len(pack["evidence_chunks"][0]["text"]), 903)
+        self.assertTrue(pack["source_pages"])
+        self.assertNotIn("body", pack["source_pages"][0])
+        self.assertNotIn("frontmatter", pack["source_pages"][0])
+        self.assertNotIn("bibtex", pack["bib_entries"][0])
+
+    def test_compact_pack_respects_budget(self):
+        pack = build_context_pack(self.rag_dir, query="TLS noise superconducting", top_k=3, budget_tokens=80)
+
+        encoded = len(str(pack))
+        self.assertLess(encoded, 1600)
+        self.assertTrue(any("context_budget" in gap for gap in pack["gaps"]))
+
     def test_key_pack_metadata_only_reports_gap(self):
-        pack = build_context_pack(self.rag_dir, key="meta")
+        pack = build_context_pack(self.rag_dir, key="meta", profile="full")
 
         self.assertEqual(pack["key"], "meta")
         self.assertEqual(pack["evidence_chunks"], [])

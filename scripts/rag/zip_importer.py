@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import re
 import shutil
-import tempfile
 import zipfile
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from dedup import entry_dedup_key
 from pdf_validator import is_pdf
 from rdf_parser import parse_rdf
 from common import append_log
+from temp_paths import local_temp_dir
 
 
 def _sanitize_key(raw: str) -> str:
@@ -62,8 +62,7 @@ def main() -> int:
         if not args.dry_run:
             d.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
+    with local_temp_dir("rag_zip_") as tmp_path:
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(tmp_path)
 

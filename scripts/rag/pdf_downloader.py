@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import tempfile
 import urllib.request
+import uuid
 from pathlib import Path
 
 from external_search import arxiv_pdf_url
@@ -26,9 +26,8 @@ def download_pdf(url: str, out_path: Path, dry_run: bool = False, timeout: int =
     if "pdf" not in content_type and not data.startswith(b"%PDF"):
         raise ValueError(f"downloaded content is not a PDF: content-type={content_type or 'unknown'}")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp_path = Path(tmp.name)
-        tmp.write(data)
+    tmp_path = out_path.parent / f".{out_path.name}.{uuid.uuid4().hex[:12]}.tmp"
+    tmp_path.write_bytes(data)
     try:
         if not is_pdf(tmp_path):
             raise ValueError("downloaded file failed PDF validation")

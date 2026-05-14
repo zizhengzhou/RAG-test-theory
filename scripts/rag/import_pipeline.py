@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +21,7 @@ from pdf_validator import is_pdf
 from rdf_parser import parse_rdf
 from source_page_builder import body_skeleton, default_frontmatter, format_frontmatter
 from sync_pdf import _match_by_slug, _resolve_file_paths
+from temp_paths import local_temp_dir
 from update_index import collect_edge_tags, ensure_category_page, rebuild_auto_block
 from zip_importer import _resolve_pdf_path, _sanitize_key, _unique_key
 
@@ -184,8 +184,7 @@ def _bib_candidates(bib_path: Path) -> list[ImportCandidate]:
 def _zip_candidates(zip_path: Path, existing_entries: list[dict[str, str]]) -> list[ImportCandidate]:
     candidates: list[ImportCandidate] = []
     _, used_keys = _existing_maps(existing_entries)
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
+    with local_temp_dir("rag_zip_plan_") as tmp_path:
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(tmp_path)
         rdf_file = next(tmp_path.rglob("*.rdf"), None)
@@ -417,8 +416,7 @@ def _copy_zip_pdf(candidate: ImportCandidate, pdf_target: Path) -> bool:
     if not candidate.zip_path or not candidate.zip_pdf_member:
         return False
     pdf_target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
+    with local_temp_dir("rag_zip_pdf_") as tmp_path:
         with zipfile.ZipFile(candidate.zip_path, "r") as zf:
             zf.extract(candidate.zip_pdf_member, tmp_path)
         extracted = tmp_path / candidate.zip_pdf_member
