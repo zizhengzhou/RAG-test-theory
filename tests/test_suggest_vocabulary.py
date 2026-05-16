@@ -1,5 +1,6 @@
 """Tests for evidence-driven vocabulary suggestion."""
 
+import json
 import sys
 import tempfile
 import unittest
@@ -51,6 +52,19 @@ class TestSuggestVocabulary(unittest.TestCase):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
 
+    def write_chunk(self, key, text, section_title="Results"):
+        chunk = {
+            "chunk_id": f"chunk-{key}",
+            "doc_id": "doc",
+            "citation_key": key,
+            "section_title": section_title,
+            "text": text,
+        }
+        (self.rag_dir / "reference" / "chunks" / f"{key}.jsonl").write_text(
+            json.dumps(chunk) + "\n",
+            encoding="utf-8",
+        )
+
     def test_extract_candidate_terms_from_chunks(self):
         terms = extract_candidate_terms(self.rag_dir, citation_key="paper")
         labels = [item["term"].lower() for item in terms]
@@ -98,7 +112,7 @@ class TestSuggestVocabulary(unittest.TestCase):
             ),
         }
         (self.rag_dir / "reference" / "chunks" / "noise.jsonl").write_text(
-            __import__("json").dumps(chunk) + "\n",
+            json.dumps(chunk) + "\n",
             encoding="utf-8",
         )
 
@@ -109,6 +123,88 @@ class TestSuggestVocabulary(unittest.TestCase):
         self.assertNotIn("phys", labels)
         self.assertNotIn("july", labels)
         self.assertTrue(any("neutrino-nucleus scattering" in label for label in labels))
+
+    def test_suppresses_broad_fragments_when_specific_phrases_exist(self):
+        self.write_chunk(
+            "fragments",
+            " ".join(
+                [
+                    "The reactor detector program studies coherent elastic neutrino-nucleus scattering.",
+                    "Coherent elastic neutrino-nucleus scattering near a reactor uses a cryogenic detector threshold.",
+                    "The detector response and reactor flux are monitored during the physics run.",
+                ]
+            ),
+        )
+
+        terms = extract_candidate_terms(self.rag_dir, citation_key="fragments", limit=30)
+        labels = {item["term"].lower() for item in terms}
+
+        self.assertNotIn("reactor", labels)
+        self.assertNotIn("detector", labels)
+        self.assertNotIn("coherent elastic", labels)
+        self.assertTrue(any("coherent elastic neutrino-nucleus scattering" in label for label in labels))
+        self.assertTrue(any("cryogenic detector threshold" in label for label in labels))
+
+    def test_longer_phrase_dominates_shorter_prefix(self):
+        self.write_chunk(
+            "prefix",
+            "Coherent elastic measurements motivate coherent elastic neutrino-nucleus scattering. "
+            "Coherent elastic neutrino-nucleus scattering is the reviewed terminology.",
+        )
+
+        terms = extract_candidate_terms(self.rag_dir, citation_key="prefix", limit=20)
+        labels = [item["term"].lower() for item in terms]
+
+        self.assertIn("coherent elastic neutrino-nucleus scattering", labels)
+        self.assertNotIn("coherent elastic", labels)
+        self.assertNotIn("coherent elastic neutrino-nucleus", labels)
+        self.assertNotIn("elastic neutrino-nucleus", labels)
+
+    def test_preserves_mixed_case_acronym_terms(self):
+        self.write_chunk(
+            "acronyms",
+            "CEvNS is measured by CONUS and CRESST. "
+            "CEvNS signatures constrain TLS noise in cryogenic detectors.",
+        )
+
+        terms = extract_candidate_terms(self.rag_dir, citation_key="acronyms", limit=20)
+        labels = {item["term"] for item in terms}
+
+        self.assertIn("CEvNS", labels)
+        self.assertIn("CONUS", labels)
+        self.assertIn("CRESST", labels)
+
+    def test_existing_local_vocabulary_alias_is_protected_from_fragment_suppression(self):
+        self.write_chunk(
+            "alias",
+            "Detector thresholds are important. Detector thresholds improve detector background rejection.",
+        )
+        (self.rag_dir / "vocabulary.md").write_text(
+            """# DARW Vocabulary
+
+Schema version: `darw-vocabulary-v1`
+
+```yaml
+terms:
+- canonical_id: local:detector-thresholds
+  label: Detector thresholds
+  namespace: local
+  category: properties
+  aliases:
+  - detector thresholds
+  parent: null
+  related: []
+  source: user
+  needs_review: false
+```
+""",
+            encoding="utf-8",
+        )
+
+        suggestions = suggest_edges(self.rag_dir, citation_key="alias", online=False)
+        entries = suggestions.get("properties", [])
+
+        self.assertTrue(any(entry["canonical_id"] == "local:detector-thresholds" for entry in entries))
 
     @patch("physh_mapper.query_concept")
     @patch("physh_mapper.search_concepts")

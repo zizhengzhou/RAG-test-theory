@@ -11,6 +11,7 @@ from pathlib import Path
 from common import read_frontmatter
 from darw_schema import EDGE_CATEGORIES
 from edge_normalizer import normalize_terms
+from physh_mapper import load_vocabulary_terms
 
 STOPWORDS = {
     "abstract", "introduction", "method", "methods", "result", "results", "discussion",
@@ -28,12 +29,23 @@ STOPWORDS = {
     "between", "whereas", "however", "while", "respectively", "approximately",
     "expected", "predicted", "included", "described", "observed", "measured",
     "about", "addition", "measure", "shows", "total", "factor", "function",
-    "order", "number", "similarly",
+    "order", "number", "similarly", "important", "improve", "improves", "improved",
+    "signature", "signatures", "constrain", "constrains", "constrained",
 }
 GENERIC_SINGLE_WORDS = STOPWORDS | {
     "energy", "signal", "physics", "impact", "uncertainty", "counts", "device",
+    "detector", "detectors", "reactor", "reactors",
     "nature", "october", "january", "february", "march", "april", "june",
     "august", "september", "november", "december",
+}
+BROAD_STANDALONE_TOKENS = {"detector", "detectors", "reactor", "reactors"}
+GENERIC_FRAGMENT_PHRASES = {
+    "coherent elastic",
+    "elastic neutrino",
+    "elastic neutrino nucleus",
+    "coherent elastic neutrino nucleus",
+    "neutrino magnetic",
+    "reactor neutrino",
 }
 DOMAIN_TOKENS = {
     "background", "bolometer", "calibration", "cawo4", "cevns", "coherent",
@@ -136,6 +148,24 @@ def _term_tokens(term: str) -> list[str]:
     return [token.lower() for token in re.findall(r"[A-Za-z0-9]+", term)]
 
 
+def _normalized_term(term: str) -> str:
+    return " ".join(_term_tokens(term))
+
+
+def _protected_vocabulary_terms(rag_dir: Path) -> set[str]:
+    protected: set[str] = set()
+    for entry in load_vocabulary_terms(rag_dir / "vocabulary.md"):
+        label = str(entry.get("label", "")).strip()
+        if label:
+            protected.add(_normalized_term(label))
+        for alias in entry.get("aliases", []) or []:
+            alias_text = str(alias).strip()
+            if alias_text:
+                protected.add(_normalized_term(alias_text))
+    protected.discard("")
+    return protected
+
+
 def _has_domain_signal(term: str) -> bool:
     tokens = _term_tokens(term)
     return any(token in DOMAIN_TOKENS for token in tokens)
@@ -143,7 +173,11 @@ def _has_domain_signal(term: str) -> bool:
 
 def _looks_like_acronym(term: str) -> bool:
     compact = re.sub(r"[^A-Za-z0-9]", "", term)
-    return 2 <= len(compact) <= 12 and compact.upper() == compact and any(ch.isalpha() for ch in compact)
+    letters = [ch for ch in compact if ch.isalpha()]
+    if not (2 <= len(compact) <= 12 and letters):
+        return False
+    uppercase = sum(1 for ch in letters if ch.isupper())
+    return compact.upper() == compact or uppercase >= max(2, len(letters) - 1)
 
 
 def _quality_score(term: str, count: int) -> float:
@@ -151,12 +185,20 @@ def _quality_score(term: str, count: int) -> float:
     token_count = len(tokens)
     score = float(count)
     if token_count >= 2:
-        score += 8.0 + min(token_count, 4)
+        score += 8.0 + min(token_count, 5)
+    if 3 <= token_count <= 5:
+        score += 4.0
     if _has_domain_signal(term):
         score += 10.0
     if _looks_like_acronym(term):
         score += 5.0
     if token_count == 1:
+        score -= 6.0
+        if tokens[0] in BROAD_STANDALONE_TOKENS:
+            score -= 8.0
+    if token_count == 2 and _normalized_term(term) in GENERIC_FRAGMENT_PHRASES:
+        score -= 6.0
+    if tokens and tokens[-1] in GENERIC_TRAILING_TOKENS:
         score -= 4.0
     return score
 
@@ -173,36 +215,68 @@ def _keep_section_title(title: str) -> bool:
     return _has_domain_signal(normalized) or _looks_like_acronym(normalized)
 
 
-def _is_fragment_of_longer(term: str, selected_terms: list[str]) -> bool:
-    term_tokens = _term_tokens(term)
-    if len(term_tokens) < 2:
+def _contains_token_sequence(longer_tokens: list[str], shorter_tokens: list[str]) -> bool:
+    if len(shorter_tokens) >= len(longer_tokens):
         return False
-    joined = " ".join(term_tokens)
-    for selected in selected_terms:
-        selected_tokens = _term_tokens(selected)
-        if len(selected_tokens) <= len(term_tokens):
-            continue
-        haystack = " ".join(selected_tokens)
-        if joined in haystack:
+    for idx in range(0, len(longer_tokens) - len(shorter_tokens) + 1):
+        if longer_tokens[idx : idx + len(shorter_tokens)] == shorter_tokens:
             return True
     return False
 
 
-def _is_useful_candidate(term: str, count: int) -> bool:
+def _is_fragment_of_longer(term: str, selected_terms: list[str]) -> bool:
+    term_tokens = _term_tokens(term)
+    if len(term_tokens) < 2:
+        return False
+    for selected in selected_terms:
+        if _contains_token_sequence(_term_tokens(selected), term_tokens):
+            return True
+    return False
+
+
+def _is_dominated_subphrase(term: str, count: int, counter: Counter[str], protected_terms: set[str]) -> bool:
+    normalized = _normalized_term(term)
+    if normalized in protected_terms or _looks_like_acronym(term):
+        return False
+    tokens = _term_tokens(term)
+    if not tokens:
+        return True
+    if len(tokens) == 1 and tokens[0] in BROAD_STANDALONE_TOKENS:
+        return True
+    candidate_score = _quality_score(term, count)
+    for longer, longer_count in counter.items():
+        longer_tokens = _term_tokens(longer)
+        if not _contains_token_sequence(longer_tokens, tokens):
+            continue
+        if not _is_useful_candidate(longer, longer_count, protected_terms):
+            continue
+        longer_score = _quality_score(longer, longer_count)
+        if normalized in GENERIC_FRAGMENT_PHRASES:
+            return True
+        if longer_count >= count or longer_score >= candidate_score + 2.0:
+            return True
+    return False
+
+
+def _is_useful_candidate(term: str, count: int, protected_terms: set[str] | None = None) -> bool:
+    protected_terms = protected_terms or set()
     lower = term.lower()
+    normalized = _normalized_term(term)
     parts = lower.split()
+    if normalized in protected_terms:
+        return True
     if lower in STOPWORDS or any(part in STOPWORDS for part in parts):
         return False
     if re.search(r"\b(?:hep|astro|nucl|cond-mat|quant-ph)-[a-z]{2}\b", lower):
         return False
-    if len(parts) == 1 and count <= MAX_SINGLE_TOKEN_COUNT:
+    if len(parts) == 1 and count <= MAX_SINGLE_TOKEN_COUNT and not _looks_like_acronym(term):
         return False
     if len(parts) == 1:
         if lower in GENERIC_SINGLE_WORDS:
             return False
         if not (_has_domain_signal(term) or _looks_like_acronym(term)):
             return False
-    if count < MIN_TERM_COUNT and len(parts) < 2:
+    if count < MIN_TERM_COUNT and len(parts) < 2 and not _looks_like_acronym(term):
         return False
     if len(term) < 5:
         return False
@@ -230,12 +304,16 @@ def extract_candidate_terms(rag_dir: Path, *, citation_key: str = "", limit: int
             for variant in _candidate_variants(term):
                 counter[variant] += 1
     terms: list[dict] = []
+    protected_terms = _protected_vocabulary_terms(rag_dir)
     ranked = sorted(counter.items(), key=lambda item: (_quality_score(item[0], item[1]), item[1], len(item[0])), reverse=True)
     selected_terms: list[str] = []
     for term, count in ranked:
-        if not _is_useful_candidate(term, count):
+        if not _is_useful_candidate(term, count, protected_terms):
             continue
-        if _is_fragment_of_longer(term, selected_terms):
+        is_protected = _normalized_term(term) in protected_terms
+        if not is_protected and _is_dominated_subphrase(term, count, counter, protected_terms):
+            continue
+        if not is_protected and _is_fragment_of_longer(term, selected_terms):
             continue
         terms.append({"term": term, "count": count})
         selected_terms.append(term)

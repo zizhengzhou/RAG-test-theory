@@ -2,9 +2,9 @@
 
 ## 0. 当前状态摘要
 
-**版本**：Phase 2-6, 8-9 完成（Phase 7/10/11 推迟）
-**测试**：112 项全部通过
-**脚本**：scripts/rag/ 下 37 个 Python 模块
+**版本**：Phase 2-6, 8-9 与 review-gated vocabulary/edge/wiki 收尾完成（Phase 7/10/11 推迟）
+**测试**：测试数量随覆盖扩展变化，以 `python -m pytest tests/ -v` 为准
+**脚本**：`scripts/rag/` 下提供 DARW RAG CLI 工具
 **技能**：5 个 Claude Code 技能（rag, rag-evidence, rag-import, rag-init, rag-maintain）
 
 ---
@@ -23,7 +23,7 @@ python scripts/rag/rag_init.py --rag-dir RAG
 |---|---|
 | `RAG/references.bib` | BibTeX 文献清单（空） |
 | `RAG/template.md` | 源页面模板（darw-source-v1） |
-| `RAG/vocabulary.md` | 受控术语表（初始 terms: []） |
+| `RAG/vocabulary.md` | 受控术语表（新项目初始可为空） |
 | `RAG/SKILL.md` | 目录结构说明 |
 | `RAG/index.md` | 导航索引（含 AUTO 块） |
 | `RAG/log.md` | 操作日志 |
@@ -477,7 +477,7 @@ BibTeX 解析/渲染。
 
 1. **PDF route 命名兼容期**：canonical route 已改为 `pdf_pymupdf`，旧 `pdf_mineru` 仅作为 schema/validator/CLI compatibility alias 保留。风险是旧数据迁移前仍会在少量兼容层看到 legacy 名称。
 
-2. **词汇表为空**：`vocabulary.md` 的 `terms: []` 意味着所有 source page 的 edges 均为空。edge-based 查询和图谱导航完全不可用，直到手动填充术语。
+2. **词汇仍需 review discipline**：`vocabulary.md` 已包含审查后的 `physh:*` 与 `local:*` 节点；新增 `local:*` 和语义 PhySH 候选仍必须通过 dry-run JSON 审查与显式 `--accept` 后才能写入。
 
 3. **Windows 编码**：已增加 `cli_encoding.py` 并在 `common.py` 中配置 UTF-8 stdio；仍需关注不导入 `common.py` 的独立脚本输出。
 
@@ -485,7 +485,7 @@ BibTeX 解析/渲染。
 
 5. **LlamaIndex heading 缺陷**：MarkdownNodeParser 对顶级标题返回 `header_path: /`，导致 section 标题检测依赖 regex 回退。
 
-6. **证据覆盖率低**：当前 7 篇源页面中仅 2 篇有完整的证据产物（parsed MD + chunks），其余仅为元数据存根。
+6. **证据覆盖率需要持续验证**：当前项目数据已为现有 7 篇源页面生成 parsed Markdown 与 chunk JSONL；后续导入的新文献仍需运行 `evidence_ingest.py` 并用 `validate_evidence.py`/`rag_lint.py` 检查。
 
 7. **技能引用覆盖仍需巡检**：核心 evidence/search/trace/validate/maintain 脚本已有技能入口；新增的 vocabulary suggestion、evidence summary、graph/edge 工具需要定期与技能文档同步。
 

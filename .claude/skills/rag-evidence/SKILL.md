@@ -96,7 +96,7 @@ Suggest controlled vocabulary and edge candidates from evidence chunks:
 python scripts/rag/suggest_vocabulary.py --rag-dir RAG --key degraaf2018 --dry-run
 ```
 
-Use this when `RAG/vocabulary.md` is still `terms: []` or source-page edges are empty. Treat output as review candidates, not automatically accepted physics ontology.
+Use this when `RAG/vocabulary.md` is still empty or source-page edges are sparse. Treat output as review candidates, not automatically accepted physics ontology.
 
 ### evidence-summary
 

@@ -23,7 +23,7 @@ Two evidence routes:
 
 - **Primary evidence** = parsed Markdown + chunk JSONL under `RAG/reference/`
 - **Secondary knowledge** = source pages under `RAG/summary/sources/`
-- **Vocabulary** = controlled terms in `RAG/vocabulary.md` (empty `terms: []` until populated)
+- **Vocabulary** = controlled terms in `RAG/vocabulary.md` (may start empty until populated)
 - **Edges** = structured `canonical_id` references in source page frontmatter
 - **Claims** = `chunk_id`-backed statements in source page body claim blocks
 
@@ -70,7 +70,8 @@ Two evidence routes:
 ## Running tests
 
 ```bash
+python -m pip install -e ".[dev]"
 python -m pytest tests/ -v
 ```
 
-193 tests covering: evidence pipeline (resolve, parse, chunk, ingest), search, remove, validate (evidence, vocabulary, source pages), lint, import (BibTeX, ZIP), export, external search, maintain, PDF handling, workflow integration, bootstrap, plugin smoke tests, and compact research context packs.
+The exact test count changes as coverage expands. Current coverage includes the evidence pipeline (resolve, parse, chunk, ingest), search, remove, validate (evidence, vocabulary, source pages), vocabulary review/wiki generation, lint, import (BibTeX, ZIP), export, external search, maintain, PDF handling, workflow integration, bootstrap, plugin smoke tests, and compact research context packs.

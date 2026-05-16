@@ -92,7 +92,7 @@
 
 ## 2026-05-13T07:17:45Z | build-vocabulary-wiki
 
-- input: 
+- input:
 - result: written=0 skipped=0
 
 ## 2026-05-13T07:19:18Z | apply-edges
@@ -102,7 +102,7 @@
 
 ## 2026-05-13T07:21:53Z | build-vocabulary-wiki
 
-- input: 
+- input:
 - result: written=2 skipped=0
 
 ## 2026-05-13T07:29:03Z | apply-vocabulary
@@ -172,6 +172,11 @@
 
 ## 2026-05-13T07:37:26Z | build-vocabulary-wiki
 
-- input: 
+- input:
 - result: written=7 skipped=0
+
+## 2026-05-16T03:32:03Z | update-index
+
+- input:
+- result: updated=19 pages source_index=True
 

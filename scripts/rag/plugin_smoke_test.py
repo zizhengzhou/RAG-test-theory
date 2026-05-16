@@ -75,8 +75,9 @@ def _bootstrap_args(rag_dir: Path, bib: Path, *, yes: bool) -> Namespace:
 
 
 def run_smoke_test(workdir: Path, *, keep: bool = False) -> dict[str, Any]:
-    plugin_manifest = Path("plugins/darw-rag/.codex-plugin/plugin.json")
-    marketplace = Path(".agents/plugins/marketplace.json")
+    repo_root = Path(__file__).resolve().parents[2]
+    plugin_manifest = repo_root / "plugins" / "darw-rag" / ".codex-plugin" / "plugin.json"
+    marketplace = repo_root / ".agents" / "plugins" / "marketplace.json"
     report: dict[str, Any] = {
         "plugin_manifest_exists": plugin_manifest.exists(),
         "marketplace_exists": marketplace.exists(),

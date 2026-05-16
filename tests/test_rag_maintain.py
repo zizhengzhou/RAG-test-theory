@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "rag"))
 from common import ensure_rag_dirs, write_frontmatter
 from bib_parser import render_bibtex
 from source_page_builder import default_frontmatter, body_skeleton
-from update_index import collect_edge_tags, ensure_category_page, rebuild_auto_block
+from update_index import collect_edge_tags, ensure_category_page, rebuild_auto_block, rebuild_source_index
 
 
 class TestRAGMaintain(unittest.TestCase):
@@ -86,6 +86,19 @@ class TestRAGMaintain(unittest.TestCase):
             encoding="utf-8",
             errors="replace",
         )
+
+    def test_rebuild_source_index_updates_root_source_list(self):
+        index = self.rag_dir / "index.md"
+        index.write_text(
+            "# RAG Index\n\n<!-- AUTO:SOURCES:BEGIN -->\nNo source pages indexed yet.\n<!-- AUTO:SOURCES:END -->\n",
+            encoding="utf-8",
+        )
+
+        self.assertTrue(rebuild_source_index(self.rag_dir))
+        text = index.read_text(encoding="utf-8")
+
+        self.assertIn("[smith2023benchmark](summary/sources/smith2023benchmark.md)", text)
+        self.assertNotIn("No source pages indexed yet.", text)
 
     def test_remove_dry_run_has_no_side_effects(self):
         result = self.run_cli("remove", "--rag-dir", str(self.rag_dir), "--key", "smith2023benchmark", "--dry-run")

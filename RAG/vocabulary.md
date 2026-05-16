@@ -100,6 +100,114 @@ terms:
   related: []
   source: physh
   needs_review: false
+- canonical_id: local:coherent-elastic-neutrino-nucleus-scattering
+  label: coherent elastic neutrino-nucleus scattering
+  namespace: local
+  category: research_areas
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:liquid-xenon
+  label: liquid xenon
+  namespace: local
+  category: physical_systems
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:ghz-resonator
+  label: GHz resonator
+  namespace: local
+  category: physical_systems
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:electron-lifetime
+  label: electron lifetime
+  namespace: local
+  category: properties
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:electric-field
+  label: electric field
+  namespace: local
+  category: properties
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:purification-efficiency
+  label: purification efficiency
+  namespace: local
+  category: properties
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:energy-threshold
+  label: energy threshold
+  namespace: local
+  category: properties
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:outgassing-rate
+  label: outgassing rate
+  namespace: local
+  category: observables
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:flow-rate
+  label: flow rate
+  namespace: local
+  category: observables
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:nuclear-recoil
+  label: nuclear recoil
+  namespace: local
+  category: observables
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:nucleus
+  label: NUCLEUS
+  namespace: local
+  category: experiments
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
+- canonical_id: local:conus
+  label: CONUS
+  namespace: local
+  category: experiments
+  aliases: []
+  parent: null
+  related: []
+  source: script
+  needs_review: true
 ```
 
 ---

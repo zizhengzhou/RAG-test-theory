@@ -89,7 +89,12 @@ source:
   parser_version: 0.1.1
   parsed_at: '2026-05-12'
 edges:
-  research_areas: []
+  research_areas:
+  - canonical_id: local:coherent-elastic-neutrino-nucleus-scattering
+    label: coherent elastic neutrino-nucleus scattering
+    confidence: 0.9
+    evidence: suggest_vocabulary:abeleProspectNUCLEUSExperiment2026
+    needs_review: true
   physical_systems: []
   techniques: []
   properties:
@@ -99,9 +104,19 @@ edges:
     evidence: suggest_vocabulary:abeleProspectNUCLEUSExperiment2026
     needs_review: false
   models: []
-  observables: []
+  observables:
+  - canonical_id: local:nuclear-recoil
+    label: nuclear recoil
+    confidence: 0.9
+    evidence: suggest_vocabulary:abeleProspectNUCLEUSExperiment2026
+    needs_review: true
   datasets: []
-  experiments: []
+  experiments:
+  - canonical_id: local:nucleus
+    label: NUCLEUS
+    confidence: 0.9
+    evidence: suggest_vocabulary:abeleProspectNUCLEUSExperiment2026
+    needs_review: true
 chunk_manifest: reference/chunks/arxiv_2603.24450.jsonl
 quality:
   extraction_confidence: low

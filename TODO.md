@@ -1,9 +1,8 @@
 # TODO - DARW Evidence-First RAG
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 
-This file is a stage summary: what has been completed, what is already
-verified, and what we should do next.
+This file tracks the current completion state and the next verification or future-work items.
 
 ## Current stage completed
 
@@ -14,101 +13,74 @@ verified, and what we should do next.
 - Evidence ingest is in place:
   - `scripts/rag/evidence_ingest.py`
   - `arxiv_source` and `pdf_pymupdf` routes
-  - parsed markdown, manifests, and chunk JSONL generation
+  - parsed Markdown, manifests, and chunk JSONL generation
 - arXiv failure policy is implemented:
   - `--fallback-pdf-on-arxiv-fail` is explicit
   - default behavior is fail-fast, not silent fallback
-- Vocabulary and edge workflow is in place:
-  - `suggest_vocabulary.py`
-  - `apply_vocabulary.py`
-  - `apply_edges.py`
-  - `build_vocabulary_wiki.py`
-- PhySH safety contract is in place:
-  - `physh:*` nodes must come from real PhySH API concepts
+- Vocabulary suggestion quality has been improved:
+  - broad standalone tokens such as `reactor` and `detector` are suppressed
+  - fragmentary candidates such as `coherent elastic` are filtered when better longer phrases exist
+  - acronyms and existing vocabulary-backed aliases are preserved
+  - regression tests cover noisy evidence examples
+- Review-driven vocabulary and edge workflow is implemented:
+  - `local:*` terms require explicit acceptance before saving
+  - semantic `physh:*` candidates require explicit acceptance before saving
+  - exact safe PhySH matches can auto-apply when resolved safely
+  - accepted vocabulary can drive edge application and wiki generation without manual YAML edits
+- PhySH safety coverage is in place:
+  - saved `physh:*` nodes must come from real PhySH concepts
   - semantic PhySH suggestions keep the real PhySH id/label
-  - semantic PhySH suggestions still require review before saving
-  - `validate_vocabulary.py --online-physh` can live-check saved `physh:*`
-- Retrieval and maintenance tools are in place:
+  - offline tests cover semantic suggestion → explicit acceptance → vocabulary save → edge/wiki flow
+  - `validate_vocabulary.py --online-physh` can live-check saved `physh:*` terms
+- Retrieval, validation, and maintenance tools are in place:
   - `context_pack.py`
   - `query_hybrid.py`
   - `delete_entry.py`
   - `merge_rag_update.py`
   - `summarize_topic.py`
-- Vocabulary suggestion quality has been improved:
-  - common PDF/reference noise is filtered
-  - ranking now prefers multi-word phrases, acronyms, and domain-signaled terms
-  - some generic section-title and container-word noise has been suppressed
-- Documentation has been partially cleaned:
-  - broken old `TODO.md` has been replaced
-  - `README.md` now documents Windows UTF-8/Anaconda usage
-  - `README.md` now documents explicit arXiv fallback behavior
-  - `README.md` now documents strict `physh:*` provenance expectations
+  - validators and `rag_lint.py`
+- Real project RAG artifacts have been updated through the reviewed flow:
+  - a controlled set of `local:*` terms has been accepted into `RAG/vocabulary.md`
+  - source-page edges have been applied only for canonical IDs present in the vocabulary
+  - vocabulary wiki pages have been generated
+  - `RAG/index.md` source-page AUTO block now reflects current source pages
+- Documentation has been synchronized:
+  - installation/test setup is documented through `pyproject.toml` and editable install commands
+  - brittle fixed test-count claims were removed
+  - the reviewed vocabulary workflow is documented
+  - current evidence/vocabulary status is distinguished from deferred retrieval work
 
-## Current verified state
+## Current verification status
 
-- Full test suite passes locally.
-- `rag_lint.py --rag-dir RAG` passes on the real project data.
-- Live vocabulary validation passes for saved `physh:*` terms.
-- All current real source pages have evidence artifacts.
-- Confirmed vocabulary nodes can already generate wiki pages.
-- A real subagent drill for import/evidence/vocabulary/wiki flow has been completed in an isolated temp RAG.
+- Focused vocabulary, PhySH, edge, wiki, and source-index tests have been added or expanded.
+- Full local test suite passes: `199 passed`.
+- Plugin smoke test passes and returns `success: true`.
+- Real RAG offline validation passes:
+  - `validate_vocabulary.py --rag-dir RAG`
+  - `validate_source_pages.py --rag-dir RAG`
+  - `validate_evidence.py --rag-dir RAG`
+  - `rag_lint.py --rag-dir RAG`
 
-## Main remaining work
+## Optional verification
 
-### 1. Vocabulary suggestion quality
+Network-dependent live PhySH validation can still be run when internet access is desired:
 
-- Continue reducing broad or fragmentary candidates such as:
-  - `reactor`
-  - `detector`
-  - `coherent elastic`
-  - other short prefixes already covered by longer better phrases
-- Improve ranking so human review sees the most useful local candidates first.
-- Add more regression tests using real noisy examples from the current RAG.
+```bash
+python scripts/rag/validate_vocabulary.py --rag-dir RAG --online-physh
+```
 
-### 2. Real review-driven vocabulary flow
+## Deferred future work
 
-- Re-run an isolated subagent drill after the latest suggestion changes.
-- Review suggested `local:*` candidates before saving any more into the main `RAG/vocabulary.md`.
-- After review, accept a small controlled set into vocabulary.
-- Apply source-page edges from the accepted vocabulary.
-- Rebuild vocabulary wiki pages after the accepted terms are written.
-
-### 3. PhySH end-to-end safety
-
-- Add one more end-to-end test for:
-  - semantic PhySH suggestion
-  - explicit acceptance
-  - vocabulary save
-  - wiki generation
-
-### 4. Documentation and cleanup
-
-- Add one concrete walkthrough from:
-  - local PDF or arXiv id
-  - evidence ingest
-  - suggestion review
-  - accepted vocabulary
-  - edge application
-  - wiki output
-- Check remaining docs and skill files for encoding damage or stale behavior.
-- Inspect `RAG/log.md` for repeated or noisy batch-operation records.
-- Clean temp drill directories only after explicit user approval:
-  - `.tmp_parent_rag_flow/`
-  - `.tmp_subagent_rag_flow/`
-  - `.tmp_real_drill_subagent/`
-
-## Suggested next order
-
-1. Finish one more round of `suggest_vocabulary.py` filtering and ranking.
-2. Run a fresh isolated subagent drill and inspect the candidate list.
-3. Review and accept a small set of good `local:*` and reviewed `physh:*` terms.
-4. Apply edges and rebuild vocabulary wiki pages.
-5. Re-run tests, lint, and live PhySH validation.
+- LLM-assisted source summaries and synthesis pages.
+- Production vector retrieval and Qdrant integration beyond the current scaffolding.
+- Full graph-aware hybrid retrieval beyond the current fallback/scaffold behavior.
+- Larger vocabulary curation passes as more papers are imported.
 
 ## Done for this phase means
 
 - Suggested vocabulary lists are human-reviewable and mostly free of prose junk.
-- Every saved `physh:*` term is a real live-valid PhySH concept.
+- Every saved `physh:*` term is a real live-valid PhySH concept when checked online.
 - `local:*` terms are explicit reviewed additions, not accidental extraction artifacts.
 - Import and ingest behavior is deterministic around local PDF priority and arXiv fallback.
-- The full flow can be demonstrated in an isolated temp RAG without manual YAML editing.
+- The reviewed vocabulary → edge → wiki flow works without manual YAML editing.
+- Tests, smoke test, validators, and lint pass on the final checked-out state.

@@ -13,6 +13,8 @@ from common import read_frontmatter, append_log
 
 AUTO_BEGIN = "<!-- AUTO:BEGIN -->"
 AUTO_END = "<!-- AUTO:END -->"
+SOURCE_AUTO_BEGIN = "<!-- AUTO:SOURCES:BEGIN -->"
+SOURCE_AUTO_END = "<!-- AUTO:SOURCES:END -->"
 
 
 def load_vocabulary_categories(rag_dir: Path) -> set[str]:
@@ -100,6 +102,30 @@ def rebuild_auto_block(page_path: Path, category: str, tag: str, source_keys: li
     return True
 
 
+def rebuild_source_index(rag_dir: Path) -> bool:
+    index_path = rag_dir / "index.md"
+    sources_dir = rag_dir / "summary" / "sources"
+    if not index_path.exists() or not sources_dir.is_dir():
+        return False
+    text = index_path.read_text(encoding="utf-8")
+    begin_idx = text.find(SOURCE_AUTO_BEGIN)
+    end_idx = text.find(SOURCE_AUTO_END)
+    if begin_idx == -1 or end_idx == -1:
+        return False
+    source_pages = sorted(sources_dir.glob("*.md"))
+    if source_pages:
+        lines = [""]
+        for page in source_pages:
+            lines.append(f"- [{page.stem}](summary/sources/{page.name})")
+        lines.append("")
+    else:
+        lines = ["", "No source pages indexed yet.", ""]
+    new_block = "\n".join(lines)
+    new_text = text[: begin_idx + len(SOURCE_AUTO_BEGIN)] + new_block + text[end_idx:]
+    index_path.write_text(new_text, encoding="utf-8")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Update AUTO index blocks on edge-category pages")
     parser.add_argument("--rag-dir", default="RAG")
@@ -118,8 +144,10 @@ def main() -> int:
             if rebuild_auto_block(page, category, tag, source_keys):
                 updated += 1
 
-    append_log(rag_dir, "update-index", "", f"updated={updated} pages")
-    print(f"update-index: updated {updated} edge-category pages")
+    source_index_updated = rebuild_source_index(rag_dir)
+    append_log(rag_dir, "update-index", "", f"updated={updated} pages source_index={source_index_updated}")
+    suffix = " and source index" if source_index_updated else ""
+    print(f"update-index: updated {updated} edge-category pages{suffix}")
     return 0
 
 

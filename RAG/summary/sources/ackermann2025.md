@@ -30,6 +30,11 @@ edges:
     confidence: 0.9
     evidence: suggest_vocabulary:ackermann2025
     needs_review: false
+  - canonical_id: local:coherent-elastic-neutrino-nucleus-scattering
+    label: coherent elastic neutrino-nucleus scattering
+    confidence: 0.9
+    evidence: suggest_vocabulary:ackermann2025
+    needs_review: true
   physical_systems:
   - canonical_id: physh:db3d74af-cef8-4eeb-a6da-910a42929da6
     label: Neutrinos
@@ -37,11 +42,21 @@ edges:
     evidence: suggest_vocabulary:ackermann2025
     needs_review: false
   techniques: []
-  properties: []
+  properties:
+  - canonical_id: local:energy-threshold
+    label: energy threshold
+    confidence: 0.9
+    evidence: suggest_vocabulary:ackermann2025
+    needs_review: true
   models: []
   observables: []
   datasets: []
-  experiments: []
+  experiments:
+  - canonical_id: local:conus
+    label: CONUS
+    confidence: 0.9
+    evidence: suggest_vocabulary:ackermann2025
+    needs_review: true
 chunk_manifest: reference/chunks/arxiv_2501.05206.jsonl
 quality:
   extraction_confidence: low

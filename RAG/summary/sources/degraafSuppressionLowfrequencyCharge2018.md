@@ -38,9 +38,19 @@ edges:
     confidence: 0.9
     evidence: suggest_vocabulary:degraafSuppressionLowfrequencyCharge2018
     needs_review: false
-  physical_systems: []
+  physical_systems:
+  - canonical_id: local:ghz-resonator
+    label: GHz resonator
+    confidence: 0.9
+    evidence: suggest_vocabulary:degraafSuppressionLowfrequencyCharge2018
+    needs_review: true
   techniques: []
-  properties: []
+  properties:
+  - canonical_id: local:electric-field
+    label: electric field
+    confidence: 0.9
+    evidence: suggest_vocabulary:degraafSuppressionLowfrequencyCharge2018
+    needs_review: true
   models: []
   observables: []
   datasets: []

@@ -22,15 +22,19 @@ def _guess_category(label: str, entity_category: str) -> str:
     if entity_category in EDGE_CATEGORIES:
         return entity_category
     lower = label.lower()
+    if lower in {"coherent", "conus", "cresst", "nucleus", "relics-10", "relics-50"}:
+        return "experiments"
+    if any(keyword in lower for keyword in ["electric field", "efficiency", "lifetime", "threshold"]):
+        return "properties"
     heuristics = {
         "research_areas": [],
-        "physical_systems": ["detector", "crystal", "resonator", "wafer", "film", "sensor"],
+        "physical_systems": ["detector", "crystal", "resonator", "wafer", "film", "sensor", "xenon", "cawo4", "bolometer"],
         "techniques": ["spectroscopy", "microscopy", "lithography", "deposition", "measurement",
-                       "fabrication", "analysis", "imaging", "noise", "calibration"],
+                       "fabrication", "analysis", "imaging", "noise", "calibration", "getter", "purification", "pulse-shape"],
         "properties": ["conductivity", "temperature", "density", "frequency", "resistance",
-                       "noise", "loss", "efficiency", "resolution", "threshold"],
+                       "noise", "loss", "efficiency", "resolution", "threshold", "magnetic moment"],
         "models": ["model", "theory", "framework", "simulation", "dft", "monte carlo"],
-        "observables": ["cross section", "rate", "spectrum", "signal", "background"],
+        "observables": ["cross section", "rate", "spectrum", "signal", "background", "recoil"],
         "datasets": ["dataset", "catalog", "survey", "database"],
         "experiments": ["experiment", "facility", "telescope", "collider", "observatory"],
     }

@@ -35,11 +35,26 @@ edges:
     confidence: 0.9
     evidence: suggest_vocabulary:panReviewBackgroundStudy2024
     needs_review: false
-  physical_systems: []
+  physical_systems:
+  - canonical_id: local:liquid-xenon
+    label: liquid xenon
+    confidence: 0.9
+    evidence: suggest_vocabulary:panReviewBackgroundStudy2024
+    needs_review: true
   techniques: []
-  properties: []
+  properties:
+  - canonical_id: local:electric-field
+    label: electric field
+    confidence: 0.9
+    evidence: suggest_vocabulary:panReviewBackgroundStudy2024
+    needs_review: true
   models: []
-  observables: []
+  observables:
+  - canonical_id: local:nuclear-recoil
+    label: nuclear recoil
+    confidence: 0.9
+    evidence: suggest_vocabulary:panReviewBackgroundStudy2024
+    needs_review: true
   datasets: []
   experiments: []
 chunk_manifest: reference/chunks/10.1393_ncc_i2024-24369-3.jsonl

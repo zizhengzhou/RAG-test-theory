@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-test-theory"
+version = "0.1.0"
+description = "DARW evidence-first local RAG knowledge-base tools"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0",
+  "scikit-learn>=1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+evidence = [
+  "arxiv>=2.1",
+  "arxiv2md",
+  "llama-index>=0.10",
+  "pymupdf4llm",
+]
+retrieval = [
+  "qdrant-client>=1.9",
+  "sentence-transformers>=2.7",
+]
+all = [
+  "rag-test-theory[dev,evidence,retrieval]",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts/rag"]
+addopts = "-ra"

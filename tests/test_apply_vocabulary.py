@@ -65,6 +65,11 @@ class TestApplyVocabulary(unittest.TestCase):
         terms = load_vocabulary_terms(self.rag_dir / "vocabulary.md")
         ids = {term["canonical_id"] for term in terms}
         self.assertIn(local_id, ids)
+        term = next(term for term in terms if term["canonical_id"] == local_id)
+        self.assertEqual(term["namespace"], "local")
+        self.assertIn(term["category"], {"research_areas", "physical_systems", "techniques", "properties", "models", "observables", "datasets", "experiments"})
+        self.assertEqual(term["source"], "script")
+        self.assertTrue(term["needs_review"])
 
     def test_repeated_apply_does_not_duplicate_terms(self):
         plan = build_vocabulary_plan(self.rag_dir, key="paper", online=False)
@@ -150,7 +155,11 @@ terms:
         term = load_vocabulary_terms(self.rag_dir / "vocabulary.md")[0]
         self.assertEqual(term["canonical_id"], "physh:semantic123")
         self.assertEqual(term["label"], "Elastic scattering reactions")
+        self.assertEqual(term["namespace"], "physh")
+        self.assertEqual(term["category"], "research_areas")
         self.assertEqual(term["aliases"], ["elastic scattering"])
+        self.assertEqual(term["source"], "physh")
+        self.assertTrue(term["needs_review"])
 
 
 if __name__ == "__main__":
